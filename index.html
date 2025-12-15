@@ -542,6 +542,134 @@
         align-items: stretch;
       }
     }
+    @media (max-width: 900px) {
+  body {
+    padding: 16px 10px;
+  }
+
+  .card {
+    padding: 18px 14px 14px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .title-block h1 {
+    font-size: 1.35rem;
+  }
+
+  .tag-pill {
+    align-self: flex-start;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .btn,
+  .controls .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .search-wrapper {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .search-wrapper > span {
+    white-space: nowrap;
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Alarm button + panel */
+  #alarmWrap {
+    width: 100%;
+  }
+
+  .alarm-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .alarm-panel {
+    left: 0;
+    right: 0;
+    width: 100%;
+    top: calc(100% + 8px);
+  }
+
+  .edit-switch {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .edit-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .file-input-label {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .file-input-label input[type="file"] {
+    width: 100%;
+  }
+
+  .table-container {
+    max-height: 58vh;
+  }
+
+  table {
+    font-size: 0.78rem;
+  }
+
+  th,
+  td {
+    padding: 6px 8px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .title-block h1 {
+    font-size: 1.2rem;
+  }
+
+  .tag-pill {
+    font-size: 0.75rem;
+    padding: 3px 9px;
+  }
+
+  .table-container {
+    max-height: 55vh;
+  }
+
+  table {
+    font-size: 0.74rem;
+  }
+
+  th,
+  td {
+    padding: 6px 7px;
+  }
+}
+
   </style>
 </head>
 
