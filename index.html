@@ -481,8 +481,13 @@
       background: #e5e7eb;
     }
 
-    .alarm-dot.critical { background: #dc2626; }
-    .alarm-dot.warning { background: #f59e0b; }
+    .alarm-dot.critical {
+      background: #dc2626;
+    }
+
+    .alarm-dot.warning {
+      background: #f59e0b;
+    }
 
     .alarm-text {
       font-size: 0.85rem;
@@ -496,180 +501,203 @@
       margin-top: 2px;
     }
 
-    /* Row highlight for alarms */
     tr.alarm-critical td {
       background: #fee2e2 !important;
     }
+
     tr.alarm-warning td {
       background: #fef9c3 !important;
     }
+
     tr.alarm-critical td:first-child,
     tr.alarm-warning td:first-child {
       border-left: 4px solid transparent;
     }
-    tr.alarm-critical td:first-child { border-left-color: #dc2626 !important; }
-    tr.alarm-warning td:first-child { border-left-color: #f59e0b !important; }
 
+    tr.alarm-critical td:first-child {
+      border-left-color: #dc2626 !important;
+    }
+
+    tr.alarm-warning td:first-child {
+      border-left-color: #f59e0b !important;
+    }
+
+    /* ===== Loading Overlay ===== */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+    }
+
+    .loading-overlay.show {
+      display: flex;
+    }
+
+    .loading-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 16px 18px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+      min-width: 220px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .spinner {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 3px solid #e5e7eb;
+      border-top-color: var(--primary);
+      animation: spin 0.9s linear infinite;
+    }
+
+    .loading-text {
+      font-size: 0.9rem;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ===== Fixed Media Queries ===== */
     @media (max-width: 900px) {
+      body {
+        padding: 16px 10px;
+      }
+
+      .card {
+        padding: 18px 14px 14px;
+      }
+
       .header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 10px;
+      }
+
+      .title-block h1 {
+        font-size: 1.35rem;
+      }
+
+      .tag-pill {
+        align-self: flex-start;
       }
 
       .controls {
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
       }
 
       .btn,
       .controls .btn {
-        justify-content: center;
         width: 100%;
+        justify-content: center;
       }
 
       .search-wrapper {
         width: 100%;
-        justify-content: flex-start;
         margin-left: 0;
+        justify-content: flex-start;
+        gap: 8px;
+      }
+
+      .search-wrapper>span {
+        white-space: nowrap;
       }
 
       .search-input {
         width: 100%;
+        min-width: 0;
+      }
+
+      #alarmWrap {
+        width: 100%;
+      }
+
+      .alarm-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .alarm-panel {
+        left: 0;
+        right: 0;
+        width: 100%;
+        top: calc(100% + 8px);
+      }
+
+      .edit-switch {
+        width: 100%;
+        justify-content: center;
       }
 
       .edit-controls {
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
+      }
+
+      .file-input-label {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .file-input-label input[type="file"] {
+        width: 100%;
+      }
+
+      .table-container {
+        max-height: 58vh;
+      }
+
+      table {
+        font-size: 0.78rem;
+      }
+
+      th,
+      td {
+        padding: 6px 8px;
       }
     }
-    @media (max-width: 900px) {
-  body {
-    padding: 16px 10px;
-  }
 
-  .card {
-    padding: 18px 14px 14px;
-  }
+    @media (max-width: 480px) {
+      .title-block h1 {
+        font-size: 1.2rem;
+      }
 
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
+      .tag-pill {
+        font-size: 0.75rem;
+        padding: 3px 9px;
+      }
 
-  .title-block h1 {
-    font-size: 1.35rem;
-  }
+      .table-container {
+        max-height: 55vh;
+      }
 
-  .tag-pill {
-    align-self: flex-start;
-  }
+      table {
+        font-size: 0.74rem;
+      }
 
-  .controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .btn,
-  .controls .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .search-wrapper {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-    gap: 8px;
-  }
-
-  .search-wrapper > span {
-    white-space: nowrap;
-  }
-
-  .search-input {
-    width: 100%;
-    min-width: 0;
-  }
-
-  /* Alarm button + panel */
-  #alarmWrap {
-    width: 100%;
-  }
-
-  .alarm-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .alarm-panel {
-    left: 0;
-    right: 0;
-    width: 100%;
-    top: calc(100% + 8px);
-  }
-
-  .edit-switch {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .edit-controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .file-input-label {
-    width: 100%;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .file-input-label input[type="file"] {
-    width: 100%;
-  }
-
-  .table-container {
-    max-height: 58vh;
-  }
-
-  table {
-    font-size: 0.78rem;
-  }
-
-  th,
-  td {
-    padding: 6px 8px;
-  }
-}
-
-/* Small phones */
-@media (max-width: 480px) {
-  .title-block h1 {
-    font-size: 1.2rem;
-  }
-
-  .tag-pill {
-    font-size: 0.75rem;
-    padding: 3px 9px;
-  }
-
-  .table-container {
-    max-height: 55vh;
-  }
-
-  table {
-    font-size: 0.74rem;
-  }
-
-  th,
-  td {
-    padding: 6px 7px;
-  }
-}
-
+      th,
+      td {
+        padding: 6px 7px;
+      }
+    }
   </style>
 </head>
 
@@ -759,6 +787,14 @@
     </div>
   </div>
 
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="loading-text">Working...</div>
+    </div>
+  </div>
+
   <script>
     // ========= Config =========
     const API_URL = "https://lroggfzkgi.execute-api.us-east-1.amazonaws.com/prod/fetch-company";
@@ -806,6 +842,21 @@
     const tableHeaderRow = document.getElementById("tableHeaderRow");
     const rowCountEl = document.getElementById("rowCount");
 
+    // Loading overlay
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const loadingTextEl = loadingOverlay.querySelector(".loading-text");
+
+    function showOverlay(text = "Working...") {
+      loadingTextEl.textContent = text;
+      loadingOverlay.classList.add("show");
+      loadingOverlay.setAttribute("aria-hidden", "false");
+    }
+
+    function hideOverlay() {
+      loadingOverlay.classList.remove("show");
+      loadingOverlay.setAttribute("aria-hidden", "true");
+    }
+
     // alarms UI
     const alarmBtn = document.getElementById("alarmBtn");
     const alarmBadge = document.getElementById("alarmBadge");
@@ -818,14 +869,12 @@
     // ========= state =========
     let currentColumns = [];
     let hasDataInGrid = false;
-    let fullItems = [];      // all rows with _rowId + _idx
-    let baselineItems = [];  // last loaded from server (original)
+    let fullItems = [];
+    let baselineItems = [];
     let editMode = false;
     let rowIdCounter = 0;
 
-    // alarms state
-    let alarms = []; // [{level, pk, company, sales, type, year, message}]
-    let lastRenderedRowMap = new Map(); // rowId -> row
+    let alarms = [];
 
     function generateRowId() {
       rowIdCounter += 1;
@@ -843,10 +892,15 @@
       rowCountEl.textContent = `${count} row${count === 1 ? "" : "s"}`;
     }
 
-    function setLoading(isLoading) {
+    function setLoading(isLoading, text = "Working...") {
       btnReload.disabled = isLoading;
       btnUpload.disabled = isLoading || !hasDataInGrid || !editMode;
-      if (isLoading) setStatus("Working...", "");
+      if (isLoading) {
+        showOverlay(text);
+        setStatus(text, "");
+      } else {
+        hideOverlay();
+      }
     }
 
     async function parseApiJson(resp) {
@@ -891,10 +945,9 @@
     }
 
     function normalizeDigits(str) {
-      // Arabic-Indic digits -> Latin
       const map = {
-        "٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9",
-        "۰":"0","۱":"1","۲":"2","۳":"3","۴":"4","۵":"5","۶":"6","۷":"7","۸":"8","۹":"9"
+        "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4", "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+        "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4", "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9"
       };
       return String(str).replace(/[٠-٩۰-۹]/g, ch => map[ch] ?? ch);
     }
@@ -903,7 +956,6 @@
       if (v == null) return NaN;
       let s = normalizeDigits(String(v)).trim();
       if (!s) return NaN;
-      // remove commas, arabic comma, spaces, currency words/symbols
       s = s.replace(/[,،\s]/g, "");
       s = s.replace(/[^\d.\-]/g, "");
       const n = Number(s);
@@ -912,17 +964,13 @@
 
     function findSalesColumnName() {
       if (currentColumns.includes(SALES_COL_CURRENT)) return SALES_COL_CURRENT;
-
-      // fallback: any column that contains "اجمالي مبيعات" and current year
       const y = String(CURRENT_YEAR);
       const hit = currentColumns.find(c => c.includes(SALES_COL_PREFIX) && c.includes(y));
       if (hit) return hit;
 
-      // last fallback: any "اجمالي مبيعات" column (latest-looking)
       const salesCols = currentColumns.filter(c => c.includes(SALES_COL_PREFIX));
       if (!salesCols.length) return null;
 
-      // try pick max year found
       let best = salesCols[0];
       let bestYear = -Infinity;
       for (const c of salesCols) {
@@ -948,6 +996,14 @@
       return "none";
     }
 
+    function applyAlarmRanksToRows() {
+      for (const row of fullItems) {
+        const level = getAlarmLevelForRow(row);
+        row._alarmLevel = level;
+        row._alarmRank = (level === "critical") ? 0 : (level === "warning") ? 1 : 2;
+      }
+    }
+
     function buildAlarms() {
       const salesCol = findSalesColumnName();
       alarms = [];
@@ -963,7 +1019,6 @@
 
         const company = (row[COMPANY_COL] ?? "").toString().trim() || "(بدون اسم)";
         const pk = (row[PK_NAME] ?? "").toString().trim();
-        const type = (row[TYPE_COL] ?? "").toString().trim();
         const sales = parseMoneyToNumber(row[salesCol]);
 
         const baseMsg = `شركة ${company} مسجله في نظام المحاسبه المبسط`;
@@ -976,15 +1031,12 @@
           level,
           pk,
           company,
-          type,
           sales,
           salesCol,
-          year: (salesCol.match(/(\d{4})/) || [])[1] || String(CURRENT_YEAR),
           message: msg
         });
       }
 
-      // critical first, then warning, then by highest sales
       const rank = { "critical": 0, "warning": 1, "none": 2 };
       alarms.sort((a, b) => {
         if (rank[a.level] !== rank[b.level]) return rank[a.level] - rank[b.level];
@@ -1045,7 +1097,6 @@
         item.appendChild(dot);
         item.appendChild(txtWrap);
 
-        // click alarm -> focus row
         item.style.cursor = "pointer";
         item.addEventListener("click", () => {
           closeAlarmPanel();
@@ -1064,31 +1115,26 @@
 
     function focusRowByPk(pk) {
       if (!pk) return;
-      // clear search and show all so row exists in DOM
       searchInput.value = "";
       renderRows(fullItems);
 
-      // find in DOM and scroll
       const idx = fullItems.findIndex(r => (r[PK_NAME] ?? "").toString().trim() === pk);
       if (idx < 0) return;
 
       const rowId = fullItems[idx]._rowId;
       const tr = tableBody.querySelector(`tr[data-row-id="${rowId}"]`);
-      if (tr) {
-        tr.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      if (tr) tr.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
     function sortByCompletenessAndReindex() {
       fullItems.sort((a, b) => {
-        // ✅ alarms first (red then yellow)
-        const ra = a._alarmRank ?? 2; // 0 critical, 1 warning, 2 none
+        const ra = a._alarmRank ?? 2;
         const rb = b._alarmRank ?? 2;
         if (ra !== rb) return ra - rb;
 
         const sa = completenessScore(a);
         const sb = completenessScore(b);
-        if (sb !== sa) return sb - sa; // الأكثر امتلاءً أولاً
+        if (sb !== sa) return sb - sa;
 
         const oa = Number(a._origOrder) || 0;
         const ob = Number(b._origOrder) || 0;
@@ -1099,17 +1145,7 @@
         return pka.localeCompare(pkb);
       });
 
-      // بعد الفرز: نثبت الترقيم حسب ترتيب العرض (مش البحث)
       fullItems.forEach((row, i) => row._idx = i + 1);
-    }
-
-    function applyAlarmRanksToRows() {
-      const salesCol = findSalesColumnName(); // triggers correct year mapping
-      for (const row of fullItems) {
-        const level = getAlarmLevelForRow(row);
-        row._alarmLevel = level;
-        row._alarmRank = (level === "critical") ? 0 : (level === "warning") ? 1 : 2;
-      }
     }
 
     // ========= columns & table render =========
@@ -1194,13 +1230,11 @@
 
     function renderRows(items) {
       tableBody.innerHTML = "";
-      lastRenderedRowMap.clear();
 
       (items || []).forEach(row => {
         const tr = document.createElement("tr");
         tr.dataset.rowId = row._rowId || "";
 
-        // row highlight
         if (row._alarmLevel === "critical") tr.classList.add("alarm-critical");
         else if (row._alarmLevel === "warning") tr.classList.add("alarm-warning");
 
@@ -1235,7 +1269,6 @@
         }
 
         tableBody.appendChild(tr);
-        lastRenderedRowMap.set(row._rowId, row);
       });
 
       const rowCount = (items || []).length;
@@ -1254,7 +1287,6 @@
 
       buildColumnsFromItems(fullItems);
 
-      // alarms -> ranks -> sort -> alarms list
       applyAlarmRanksToRows();
       sortByCompletenessAndReindex();
       buildAlarms();
@@ -1342,10 +1374,7 @@
       if (!rowId) return;
 
       const row = fullItems.find(r => r._rowId === rowId);
-      if (!row) {
-        console.warn("Row not found for rowId:", rowId);
-        return;
-      }
+      if (!row) return;
 
       const pk = row[PK_NAME];
       if (!pk) {
@@ -1357,8 +1386,7 @@
       if (!ok) return;
 
       try {
-        setLoading(true);
-        setStatus(`Deleting ${pk} from server...`, "");
+        setLoading(true, `Deleting ${pk}...`);
 
         const resp = await fetch(API_URL, {
           method: "POST",
@@ -1372,8 +1400,6 @@
         if (!resp.ok) throw new Error("HTTP " + resp.status);
 
         const data = await parseApiJson(resp);
-        console.log("Delete response (parsed):", data);
-
         const deleted = data.deleted ?? 1;
         if (deleted <= 0) {
           setStatus("Server did not delete any items (maybe key not found).", "error");
@@ -1389,7 +1415,7 @@
         applyFilter();
         setStatus(`Row ${pk} deleted from server.`, "success");
       } catch (err) {
-        console.error("Error deleting row from server:", err);
+        console.error(err);
         setStatus("Error while deleting row from server.", "error");
       } finally {
         setLoading(false);
@@ -1447,8 +1473,7 @@
     // ========= Server calls =========
     async function loadFromServer() {
       try {
-        setLoading(true);
-        setStatus("Loading data ...", "");
+        setLoading(true, "Loading data...");
 
         const resp = await fetch(API_URL, {
           method: "POST",
@@ -1460,13 +1485,12 @@
 
         const data = await parseApiJson(resp);
         const items = data.items || [];
-        console.log("Data loaded from server (parsed):", items);
 
         baselineItems = JSON.parse(JSON.stringify(items));
         setData(items);
-        setStatus(``, "success");
+        setStatus("", "success");
       } catch (err) {
-        console.error("Error loading from server:", err);
+        console.error(err);
         setStatus("Error while loading data from server.", "error");
       } finally {
         setLoading(false);
@@ -1476,16 +1500,12 @@
     async function uploadGridToServer() {
       const rows = collectTableDataFromDom();
       if (!rows.length) {
-        setStatus(
-          "There is no data to upload. Make sure the grid has at least one row with a Registration Number.",
-          "error"
-        );
+        setStatus("There is no data to upload. Make sure there is at least one row with Registration Number.", "error");
         return;
       }
 
       try {
-        setLoading(true);
-        setStatus("Saving current grid to DynamoDB...", "");
+        setLoading(true, "Saving table ...");
 
         const resp = await fetch(API_URL, {
           method: "POST",
@@ -1496,14 +1516,12 @@
         if (!resp.ok) throw new Error("HTTP " + resp.status);
 
         const data = await parseApiJson(resp);
-        console.log("Server response for save (parsed):", data);
-
         const saved = data.saved ?? rows.length;
         setStatus(`Saved ${saved} rows successfully to DynamoDB.`, "success");
 
         await loadFromServer();
       } catch (err) {
-        console.error("Error saving to server:", err);
+        console.error(err);
         setStatus("Error while saving data to server.", "error");
       } finally {
         setLoading(false);
@@ -1530,7 +1548,6 @@
 
           const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
           const validRows = rows.filter(r => r[PK_NAME]);
-          console.log("Rows loaded from Excel:", validRows);
 
           if (validRows.length === 0) {
             setStatus("The Excel file does not contain a valid 'Registration Number' column.", "error");
@@ -1543,7 +1560,7 @@
           setData(validRows);
           setStatus(`File loaded. ${validRows.length} rows are ready in the grid (you can edit them).`, "success");
         } catch (err) {
-          console.error("Error reading Excel file:", err);
+          console.error(err);
           setStatus("Error while reading the Excel file.", "error");
           hasDataInGrid = false;
           btnUpload.disabled = true;
