@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Eltourath Companies – Dynamic Table</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- SheetJS for Excel reading in browser -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-soft: #e0edff;
+      --primary-dark: #1d4ed8;
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --border: #e5e7eb;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --radius-xl: 20px;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #e0edff 0, #f9fafb 55%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 24px 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-soft);
+      padding: 24px 24px 18px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title-block h1 {
+      font-size: 1.7rem;
+      margin: 0 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .tag-pill {
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      color: var(--text-muted);
+      background: #f3f4f6;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 18px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+      border: 1px solid rgba(191, 219, 254, 0.9);
+    }
+
+    .btn.secondary {
+      background: #f3f4f6;
+      color: var(--text-main);
+      box-shadow: none;
+      border-color: #d1d5db;
+    }
+
+    .btn.small {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      box-shadow: none;
+    }
+
+    .btn.danger {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fecaca;
+      box-shadow: none;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.45);
+    }
+
+    .btn-icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .file-input-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .file-input-label input[type="file"] {
+      font-size: 0.85rem;
+      padding: 4px;
+    }
+
+    .search-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .search-input {
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      min-width: 180px;
+      background: #f9fafb;
+      color: var(--text-main);
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4);
+      background: #ffffff;
+    }
+
+    .edit-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .edit-switch-indicator {
+      width: 30px;
+      height: 16px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .edit-switch-indicator::before {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: #ffffff;
+      top: 1px;
+      left: 2px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    .edit-switch.on {
+      border-color: var(--primary);
+      background: #e0edff;
+      color: #1f2937;
+    }
+
+    .edit-switch.on .edit-switch-indicator {
+      background: #bfdbfe;
+    }
+
+    .edit-switch.on .edit-switch-indicator::before {
+      transform: translateX(12px);
+      background: var(--primary);
+    }
+
+    .edit-controls {
+      display: none;
+      margin-bottom: 10px;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin: 4px 2px 2px;
+      min-height: 1em;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .status.success {
+      color: var(--success);
+    }
+
+    .table-shell {
+      margin-top: 4px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      overflow: hidden;
+    }
+
+    .table-toolbar {
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, #eff6ff, #f9fafb);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .table-toolbar .count {
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .table-container {
+      max-height: 440px;
+      overflow: auto;
+      background: #ffffff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      color: var(--text-main);
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    thead tr {
+      background: #f3f4f6;
+      box-shadow: 0 1px 0 #e5e7eb;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 6px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f9fafb;
+    }
+
+    tbody tr:nth-child(odd) {
+      background: #ffffff;
+    }
+
+    td[contenteditable="true"] {
+      cursor: text;
+    }
+
+    td[contenteditable="true"]:focus {
+      outline: 1px solid var(--primary);
+      outline-offset: -1px;
+      background: #eff6ff;
+    }
+
+    .pk-cell {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .th-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .th-buttons {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .th-btn {
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      font-size: 0.7rem;
+      padding: 1px 5px;
+      cursor: pointer;
+    }
+
+    .th-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .row-actions-btn {
+      border-radius: 999px;
+      border: 1px solid #fecaca;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      cursor: pointer;
+    }
+
+    .row-actions-btn:hover {
+      background: #fecaca;
+    }
+
+    /* ====== Alarm UI ====== */
+    .alarm-btn {
+      position: relative;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      padding: 7px 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-main);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .alarm-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.10);
+    }
+
+    .alarm-bell {
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+
+    .alarm-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 0.72rem;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+      box-shadow: 0 8px 18px rgba(220, 38, 38, 0.25);
+    }
+
+    .alarm-panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      width: min(520px, calc(100vw - 48px));
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+      overflow: hidden;
+      display: none;
+      z-index: 10;
+    }
+
+    .alarm-panel-header {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: linear-gradient(90deg, #eff6ff, #ffffff);
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .alarm-panel-header strong {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .alarm-panel-body {
+      max-height: 320px;
+      overflow: auto;
+    }
+
+    .alarm-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .alarm-item:last-child {
+      border-bottom: none;
+    }
+
+    .alarm-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-top: 4px;
+      flex-shrink: 0;
+      background: #e5e7eb;
+    }
+
+    .alarm-dot.critical { background: #dc2626; }
+    .alarm-dot.warning { background: #f59e0b; }
+
+    .alarm-text {
+      font-size: 0.85rem;
+      color: var(--text-main);
+      line-height: 1.35;
+    }
+
+    .alarm-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Row highlight for alarms */
+    tr.alarm-critical td {
+      background: #fee2e2 !important;
+    }
+    tr.alarm-warning td {
+      background: #fef9c3 !important;
+    }
+    tr.alarm-critical td:first-child,
+    tr.alarm-warning td:first-child {
+      border-left: 4px solid transparent;
+    }
+    tr.alarm-critical td:first-child { border-left-color: #dc2626 !important; }
+    tr.alarm-warning td:first-child { border-left-color: #f59e0b !important; }
+
+    @media (max-width: 900px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn,
+      .controls .btn {
+        justify-content: center;
+        width: 100%;
+      }
+
+      .search-wrapper {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+
+      .search-input {
+        width: 100%;
+      }
+
+      .edit-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <div class="title-block">
+          <h1>Eltourath Companies</h1>
+        </div>
+        <div class="tag-pill">Editable grid · Excel-style workflow</div>
+      </div>
+
+      <div class="controls">
+        <button id="btnReload" class="btn">
+          <span class="btn-icon">⟳</span>
+          <span>Load data from server</span>
+        </button>
+
+        <div class="search-wrapper">
+          <span style="font-size:0.8rem;color:var(--text-muted);">Search:</span>
+          <input id="searchInput" class="search-input" type="text" placeholder="Search in any column..." />
+        </div>
+
+        <!-- Alarm icon -->
+        <div id="alarmWrap" style="position:relative; display:inline-flex; align-items:center;">
+          <button id="alarmBtn" type="button" class="alarm-btn" title="Alarms">
+            <span class="alarm-bell">🔔</span>
+            <span style="font-size:0.85rem;color:var(--text-muted);">Alarms</span>
+            <span id="alarmBadge" class="alarm-badge">0</span>
+          </button>
+
+          <div id="alarmPanel" class="alarm-panel" role="dialog" aria-label="Alarms panel">
+            <div class="alarm-panel-header">
+              <div><strong id="alarmTitle">Alarms</strong> <span id="alarmSummary"></span></div>
+              <button id="alarmClose" type="button" class="btn small secondary" style="padding:5px 10px;">Close</button>
+            </div>
+            <div id="alarmList" class="alarm-panel-body"></div>
+          </div>
+        </div>
+
+        <button id="editToggleBtn" type="button" class="edit-switch" aria-pressed="false">
+          <span class="edit-switch-indicator"></span>
+          <span class="edit-switch-text">Edit mode</span>
+        </button>
+      </div>
+
+      <div id="editControls" class="edit-controls">
+        <label class="file-input-label">
+          <span>Excel file:</span>
+          <input id="excelInput" type="file" accept=".xlsx,.xls" />
+        </label>
+
+        <button id="btnUpload" class="btn secondary" disabled>
+          <span class="btn-icon">⬆</span>
+          <span>Save table to server</span>
+        </button>
+
+        <button id="btnAddRow" class="btn small secondary">
+          <span class="btn-icon">＋</span>
+          <span>Add row</span>
+        </button>
+
+        <button id="btnCancelEdit" class="btn small danger">
+          <span class="btn-icon">✕</span>
+          <span>Cancel edit</span>
+        </button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="table-shell">
+        <div class="table-toolbar">
+          <div class="hint"></div>
+          <div class="count" id="rowCount">0 rows</div>
+        </div>
+
+        <div class="table-container">
+          <table id="companiesTable">
+            <thead>
+              <tr id="tableHeaderRow"></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========= Config =========
+    const API_URL = "https://lroggfzkgi.execute-api.us-east-1.amazonaws.com/prod/fetch-company";
+    const PK_NAME = "Registration Number";
+    const COMPANY_COL = "Company Name";
+    const TYPE_COL = "Type of accounting";
+
+    const CURRENT_YEAR = new Date().getFullYear();
+    const SALES_COL_PREFIX = "اجمالي مبيعات";
+    const SALES_COL_CURRENT = `${SALES_COL_PREFIX} ${CURRENT_YEAR}`;
+
+    const ALARM_LIMIT = 20000000;      // 20,000,000
+    const ALARM_WARNING = 18000000;    // 18,000,000
+
+    // ثابت: اسم عمود الترقيم
+    const IDX_COL_NAME = "#";
+
+    const PRIORITY_COLS = [
+      "Company Name",
+      "Registration Number",
+      "Type of accounting",
+      "Gate type",
+      "اجمالي مبيعات 2025",
+      "اجمالي ضريبة المبيعات 2025",
+      "اجمالي مشتريات 2025",
+      "اجمالي ضريبة المشتريات 2025",
+      "اجمالي مبيعات 2024",
+      "اجمالي ضريبة المبيعات 2024",
+      "اجمالي مشتريات 2024",
+      "اجمالي ضريبة المشتريات 2024",
+    ];
+
+    // ========= DOM refs =========
+    const btnReload = document.getElementById("btnReload");
+    const btnUpload = document.getElementById("btnUpload");
+    const btnAddRow = document.getElementById("btnAddRow");
+    const btnCancelEdit = document.getElementById("btnCancelEdit");
+    const excelInput = document.getElementById("excelInput");
+    const searchInput = document.getElementById("searchInput");
+    const editToggleBtn = document.getElementById("editToggleBtn");
+    const editControls = document.getElementById("editControls");
+    const statusEl = document.getElementById("status");
+    const table = document.getElementById("companiesTable");
+    const tableBody = table.querySelector("tbody");
+    const tableHeaderRow = document.getElementById("tableHeaderRow");
+    const rowCountEl = document.getElementById("rowCount");
+
+    // alarms UI
+    const alarmBtn = document.getElementById("alarmBtn");
+    const alarmBadge = document.getElementById("alarmBadge");
+    const alarmPanel = document.getElementById("alarmPanel");
+    const alarmList = document.getElementById("alarmList");
+    const alarmClose = document.getElementById("alarmClose");
+    const alarmTitle = document.getElementById("alarmTitle");
+    const alarmSummary = document.getElementById("alarmSummary");
+
+    // ========= state =========
+    let currentColumns = [];
+    let hasDataInGrid = false;
+    let fullItems = [];      // all rows with _rowId + _idx
+    let baselineItems = [];  // last loaded from server (original)
+    let editMode = false;
+    let rowIdCounter = 0;
+
+    // alarms state
+    let alarms = []; // [{level, pk, company, sales, type, year, message}]
+    let lastRenderedRowMap = new Map(); // rowId -> row
+
+    function generateRowId() {
+      rowIdCounter += 1;
+      return "row_" + rowIdCounter + "_" + Date.now();
+    }
+
+    // ========= helpers =========
+    function setStatus(text, type = "") {
+      statusEl.textContent = text || "";
+      statusEl.classList.remove("error", "success");
+      if (type) statusEl.classList.add(type);
+    }
+
+    function setRowCount(count) {
+      rowCountEl.textContent = `${count} row${count === 1 ? "" : "s"}`;
+    }
+
+    function setLoading(isLoading) {
+      btnReload.disabled = isLoading;
+      btnUpload.disabled = isLoading || !hasDataInGrid || !editMode;
+      if (isLoading) setStatus("Working...", "");
+    }
+
+    async function parseApiJson(resp) {
+      const raw = await resp.text();
+      console.log("Raw HTTP response:", raw);
+
+      let data = {};
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        console.error("Failed to parse JSON:", e);
+        return {};
+      }
+
+      if (data && typeof data.body === "string") {
+        try {
+          const inner = JSON.parse(data.body);
+          console.log("Parsed inner body:", inner);
+          return inner;
+        } catch (e) {
+          console.warn("Failed to parse inner body JSON:", e);
+          return data;
+        }
+      }
+
+      return data;
+    }
+
+    function isFilledCell(v) {
+      if (v == null) return false;
+      const s = String(v).trim();
+      return s !== "";
+    }
+
+    function completenessScore(row) {
+      let score = 0;
+      for (const col of currentColumns) {
+        if (col === "_rowId" || col === "_idx") continue;
+        if (isFilledCell(row[col])) score += 1;
+      }
+      return score;
+    }
+
+    function normalizeDigits(str) {
+      // Arabic-Indic digits -> Latin
+      const map = {
+        "٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9",
+        "۰":"0","۱":"1","۲":"2","۳":"3","۴":"4","۵":"5","۶":"6","۷":"7","۸":"8","۹":"9"
+      };
+      return String(str).replace(/[٠-٩۰-۹]/g, ch => map[ch] ?? ch);
+    }
+
+    function parseMoneyToNumber(v) {
+      if (v == null) return NaN;
+      let s = normalizeDigits(String(v)).trim();
+      if (!s) return NaN;
+      // remove commas, arabic comma, spaces, currency words/symbols
+      s = s.replace(/[,،\s]/g, "");
+      s = s.replace(/[^\d.\-]/g, "");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function findSalesColumnName() {
+      if (currentColumns.includes(SALES_COL_CURRENT)) return SALES_COL_CURRENT;
+
+      // fallback: any column that contains "اجمالي مبيعات" and current year
+      const y = String(CURRENT_YEAR);
+      const hit = currentColumns.find(c => c.includes(SALES_COL_PREFIX) && c.includes(y));
+      if (hit) return hit;
+
+      // last fallback: any "اجمالي مبيعات" column (latest-looking)
+      const salesCols = currentColumns.filter(c => c.includes(SALES_COL_PREFIX));
+      if (!salesCols.length) return null;
+
+      // try pick max year found
+      let best = salesCols[0];
+      let bestYear = -Infinity;
+      for (const c of salesCols) {
+        const m = c.match(/(\d{4})/);
+        const yr = m ? Number(m[1]) : -Infinity;
+        if (yr > bestYear) { bestYear = yr; best = c; }
+      }
+      return best;
+    }
+
+    function getAlarmLevelForRow(row) {
+      const type = (row[TYPE_COL] ?? "").toString().trim();
+      if (type !== "مبسط") return "none";
+
+      const salesCol = findSalesColumnName();
+      if (!salesCol) return "none";
+
+      const sales = parseMoneyToNumber(row[salesCol]);
+      if (!Number.isFinite(sales)) return "none";
+
+      if (sales >= ALARM_LIMIT) return "critical";
+      if (sales >= ALARM_WARNING) return "warning";
+      return "none";
+    }
+
+    function buildAlarms() {
+      const salesCol = findSalesColumnName();
+      alarms = [];
+
+      if (!salesCol) {
+        updateAlarmUI();
+        return;
+      }
+
+      for (const row of fullItems) {
+        const level = getAlarmLevelForRow(row);
+        if (level === "none") continue;
+
+        const company = (row[COMPANY_COL] ?? "").toString().trim() || "(بدون اسم)";
+        const pk = (row[PK_NAME] ?? "").toString().trim();
+        const type = (row[TYPE_COL] ?? "").toString().trim();
+        const sales = parseMoneyToNumber(row[salesCol]);
+
+        const baseMsg = `شركة ${company} مسجله في نظام المحاسبه المبسط`;
+        const msg =
+          level === "critical"
+            ? `${baseMsg} وتخطط مبيعتها صافيه 20 مليون جنيه`
+            : `${baseMsg} واقتربت من 20 مليون جنيه (قربت على الحد)`;
+
+        alarms.push({
+          level,
+          pk,
+          company,
+          type,
+          sales,
+          salesCol,
+          year: (salesCol.match(/(\d{4})/) || [])[1] || String(CURRENT_YEAR),
+          message: msg
+        });
+      }
+
+      // critical first, then warning, then by highest sales
+      const rank = { "critical": 0, "warning": 1, "none": 2 };
+      alarms.sort((a, b) => {
+        if (rank[a.level] !== rank[b.level]) return rank[a.level] - rank[b.level];
+        const sa = Number.isFinite(a.sales) ? a.sales : 0;
+        const sb = Number.isFinite(b.sales) ? b.sales : 0;
+        return sb - sa;
+      });
+
+      updateAlarmUI();
+    }
+
+    function updateAlarmUI() {
+      const count = alarms.length;
+      if (count > 0) {
+        alarmBadge.style.display = "inline-flex";
+        alarmBadge.textContent = String(count);
+      } else {
+        alarmBadge.style.display = "none";
+        alarmBadge.textContent = "0";
+      }
+
+      alarmTitle.textContent = `Alarms (${count})`;
+      alarmSummary.textContent = count ? `• Year ${String(CURRENT_YEAR)}` : "";
+
+      alarmList.innerHTML = "";
+
+      if (!count) {
+        const empty = document.createElement("div");
+        empty.style.padding = "12px";
+        empty.style.fontSize = "0.85rem";
+        empty.style.color = "var(--text-muted)";
+        empty.textContent = "No alarms right now.";
+        alarmList.appendChild(empty);
+        return;
+      }
+
+      alarms.forEach(a => {
+        const item = document.createElement("div");
+        item.className = "alarm-item";
+
+        const dot = document.createElement("div");
+        dot.className = "alarm-dot " + a.level;
+
+        const txtWrap = document.createElement("div");
+
+        const t = document.createElement("div");
+        t.className = "alarm-text";
+        t.textContent = a.message;
+
+        const sub = document.createElement("div");
+        sub.className = "alarm-sub";
+        const salesText = Number.isFinite(a.sales) ? a.sales.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "";
+        sub.textContent = `(${a.salesCol}: ${salesText})`;
+
+        txtWrap.appendChild(t);
+        txtWrap.appendChild(sub);
+
+        item.appendChild(dot);
+        item.appendChild(txtWrap);
+
+        // click alarm -> focus row
+        item.style.cursor = "pointer";
+        item.addEventListener("click", () => {
+          closeAlarmPanel();
+          focusRowByPk(a.pk);
+        });
+
+        alarmList.appendChild(item);
+      });
+    }
+
+    function openAlarmPanel() { alarmPanel.style.display = "block"; }
+    function closeAlarmPanel() { alarmPanel.style.display = "none"; }
+    function toggleAlarmPanel() {
+      alarmPanel.style.display = (alarmPanel.style.display === "block") ? "none" : "block";
+    }
+
+    function focusRowByPk(pk) {
+      if (!pk) return;
+      // clear search and show all so row exists in DOM
+      searchInput.value = "";
+      renderRows(fullItems);
+
+      // find in DOM and scroll
+      const idx = fullItems.findIndex(r => (r[PK_NAME] ?? "").toString().trim() === pk);
+      if (idx < 0) return;
+
+      const rowId = fullItems[idx]._rowId;
+      const tr = tableBody.querySelector(`tr[data-row-id="${rowId}"]`);
+      if (tr) {
+        tr.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
+    function sortByCompletenessAndReindex() {
+      fullItems.sort((a, b) => {
+        // ✅ alarms first (red then yellow)
+        const ra = a._alarmRank ?? 2; // 0 critical, 1 warning, 2 none
+        const rb = b._alarmRank ?? 2;
+        if (ra !== rb) return ra - rb;
+
+        const sa = completenessScore(a);
+        const sb = completenessScore(b);
+        if (sb !== sa) return sb - sa; // الأكثر امتلاءً أولاً
+
+        const oa = Number(a._origOrder) || 0;
+        const ob = Number(b._origOrder) || 0;
+        if (oa !== ob) return oa - ob;
+
+        const pka = (a[PK_NAME] ?? "").toString();
+        const pkb = (b[PK_NAME] ?? "").toString();
+        return pka.localeCompare(pkb);
+      });
+
+      // بعد الفرز: نثبت الترقيم حسب ترتيب العرض (مش البحث)
+      fullItems.forEach((row, i) => row._idx = i + 1);
+    }
+
+    function applyAlarmRanksToRows() {
+      const salesCol = findSalesColumnName(); // triggers correct year mapping
+      for (const row of fullItems) {
+        const level = getAlarmLevelForRow(row);
+        row._alarmLevel = level;
+        row._alarmRank = (level === "critical") ? 0 : (level === "warning") ? 1 : 2;
+      }
+    }
+
+    // ========= columns & table render =========
+    function buildColumnsFromItems(items) {
+      const colSet = new Set();
+      (items || []).forEach(row => {
+        Object.keys(row || {}).forEach(k => {
+          if (k === "_rowId") return;
+          if (k === "_idx") return;
+          if (k === "_origOrder") return;
+          if (k === "_alarmLevel") return;
+          if (k === "_alarmRank") return;
+          colSet.add(k);
+        });
+      });
+
+      if (!colSet.size) colSet.add(PK_NAME);
+
+      const allCols = Array.from(colSet);
+      const remaining = allCols.filter(c => !PRIORITY_COLS.includes(c));
+      remaining.sort();
+
+      const ordered = PRIORITY_COLS.filter(c => colSet.has(c)).concat(remaining);
+      currentColumns = ordered;
+      console.log("Columns order:", currentColumns);
+    }
+
+    function renderHeader() {
+      tableHeaderRow.innerHTML = "";
+
+      const thIdx = document.createElement("th");
+      thIdx.textContent = IDX_COL_NAME;
+      tableHeaderRow.appendChild(thIdx);
+
+      currentColumns.forEach((col, index) => {
+        const th = document.createElement("th");
+        if (editMode) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "th-content";
+
+          const labelSpan = document.createElement("span");
+          labelSpan.textContent = col;
+
+          const btns = document.createElement("div");
+          btns.className = "th-buttons";
+
+          if (!PRIORITY_COLS.includes(col)) {
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "th-btn";
+            delBtn.textContent = "✕";
+            delBtn.title = "Delete column";
+            delBtn.addEventListener("click", () => deleteColumn(col));
+            btns.appendChild(delBtn);
+          }
+
+          if (index === currentColumns.length - 1) {
+            const addBtn = document.createElement("button");
+            addBtn.type = "button";
+            addBtn.className = "th-btn";
+            addBtn.textContent = "+";
+            addBtn.title = "Add new column";
+            addBtn.addEventListener("click", addColumn);
+            btns.appendChild(addBtn);
+          }
+
+          wrapper.appendChild(labelSpan);
+          if (btns.childNodes.length > 0) wrapper.appendChild(btns);
+          th.appendChild(wrapper);
+        } else {
+          th.textContent = col;
+        }
+        tableHeaderRow.appendChild(th);
+      });
+
+      if (editMode) {
+        const thActions = document.createElement("th");
+        thActions.textContent = "Actions";
+        tableHeaderRow.appendChild(thActions);
+      }
+    }
+
+    function renderRows(items) {
+      tableBody.innerHTML = "";
+      lastRenderedRowMap.clear();
+
+      (items || []).forEach(row => {
+        const tr = document.createElement("tr");
+        tr.dataset.rowId = row._rowId || "";
+
+        // row highlight
+        if (row._alarmLevel === "critical") tr.classList.add("alarm-critical");
+        else if (row._alarmLevel === "warning") tr.classList.add("alarm-warning");
+
+        const tdIdx = document.createElement("td");
+        tdIdx.textContent = (row._idx != null && row._idx !== "") ? String(row._idx) : "";
+        tdIdx.contentEditable = "false";
+        tr.appendChild(tdIdx);
+
+        currentColumns.forEach((col, index) => {
+          const td = document.createElement("td");
+          td.textContent = row[col] ?? "";
+          td.contentEditable = editMode ? "true" : "false";
+          td.dataset.colName = col;
+
+          if (index === 0 && col === PK_NAME) td.classList.add("pk-cell");
+          tr.appendChild(td);
+        });
+
+        if (editMode) {
+          const actionsTd = document.createElement("td");
+          const delRowBtn = document.createElement("button");
+          delRowBtn.type = "button";
+          delRowBtn.className = "row-actions-btn";
+          delRowBtn.textContent = "🗑";
+          delRowBtn.title = "Delete row";
+          delRowBtn.addEventListener("click", () => {
+            const rowId = tr.dataset.rowId;
+            deleteRow(rowId);
+          });
+          actionsTd.appendChild(delRowBtn);
+          tr.appendChild(actionsTd);
+        }
+
+        tableBody.appendChild(tr);
+        lastRenderedRowMap.set(row._rowId, row);
+      });
+
+      const rowCount = (items || []).length;
+      setRowCount(rowCount);
+      hasDataInGrid = rowCount > 0;
+      btnUpload.disabled = !hasDataInGrid || !editMode;
+    }
+
+    function setData(items) {
+      fullItems = (items || []).map((row, i) => {
+        const copy = { ...row };
+        copy._rowId = generateRowId();
+        copy._origOrder = i + 1;
+        return copy;
+      });
+
+      buildColumnsFromItems(fullItems);
+
+      // alarms -> ranks -> sort -> alarms list
+      applyAlarmRanksToRows();
+      sortByCompletenessAndReindex();
+      buildAlarms();
+
+      renderHeader();
+      renderRows(fullItems);
+    }
+
+    // ========= filter =========
+    function applyFilter() {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        renderRows(fullItems);
+        setStatus("", "");
+        return;
+      }
+
+      const filtered = fullItems.filter(row =>
+        currentColumns.some(col => {
+          const v = (row[col] ?? "").toString().toLowerCase();
+          return v.includes(q);
+        })
+      );
+
+      renderRows(filtered);
+      setStatus(`Showing ${filtered.length} of ${fullItems.length} rows (filtered).`, "");
+    }
+
+    // ========= collect grid data for save =========
+    function collectTableDataFromDom() {
+      const rows = [];
+      const trs = tableBody.querySelectorAll("tr");
+
+      trs.forEach(tr => {
+        const tds = Array.from(tr.querySelectorAll("td")).slice(1);
+        const obj = {};
+
+        currentColumns.forEach((col, colIndex) => {
+          const td = tds[colIndex];
+          obj[col] = td ? td.textContent.trim() : "";
+        });
+
+        if (obj[PK_NAME]) rows.push(obj);
+      });
+
+      console.log("Grid data to upload:", rows);
+      return rows;
+    }
+
+    // ========= Edit mode UI =========
+    function updateEditModeUI() {
+      if (editMode) {
+        editToggleBtn.classList.add("on");
+        editToggleBtn.setAttribute("aria-pressed", "true");
+        editControls.style.display = "flex";
+        setStatus("Edit mode is ON.", "");
+      } else {
+        editToggleBtn.classList.remove("on");
+        editToggleBtn.setAttribute("aria-pressed", "false");
+        editControls.style.display = "none";
+        setStatus("", "");
+      }
+      renderHeader();
+      applyFilter();
+    }
+
+    // ========= row / column ops =========
+    function addRow() {
+      const newRow = {};
+      currentColumns.forEach(col => newRow[col] = "");
+      newRow._rowId = generateRowId();
+      newRow._origOrder = fullItems.length + 1;
+
+      fullItems.push(newRow);
+
+      applyAlarmRanksToRows();
+      sortByCompletenessAndReindex();
+      buildAlarms();
+
+      applyFilter();
+      setStatus("New empty row added. Fill it then save to server.", "");
+    }
+
+    async function deleteRow(rowId) {
+      if (!rowId) return;
+
+      const row = fullItems.find(r => r._rowId === rowId);
+      if (!row) {
+        console.warn("Row not found for rowId:", rowId);
+        return;
+      }
+
+      const pk = row[PK_NAME];
+      if (!pk) {
+        alert("This row has no Registration Number, cannot delete on server.");
+        return;
+      }
+
+      const ok = confirm(`Delete company with Registration Number ${pk} from server?`);
+      if (!ok) return;
+
+      try {
+        setLoading(true);
+        setStatus(`Deleting ${pk} from server...`, "");
+
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "delete",
+            registration_numbers: [pk]
+          })
+        });
+
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+        const data = await parseApiJson(resp);
+        console.log("Delete response (parsed):", data);
+
+        const deleted = data.deleted ?? 1;
+        if (deleted <= 0) {
+          setStatus("Server did not delete any items (maybe key not found).", "error");
+          return;
+        }
+
+        fullItems = fullItems.filter(r => r._rowId !== rowId);
+
+        applyAlarmRanksToRows();
+        sortByCompletenessAndReindex();
+        buildAlarms();
+
+        applyFilter();
+        setStatus(`Row ${pk} deleted from server.`, "success");
+      } catch (err) {
+        console.error("Error deleting row from server:", err);
+        setStatus("Error while deleting row from server.", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function addColumn() {
+      const name = prompt("New column name:");
+      if (!name) return;
+      if (currentColumns.includes(name)) {
+        alert("Column already exists.");
+        return;
+      }
+
+      currentColumns.push(name);
+      fullItems.forEach(row => {
+        if (!(name in row)) row[name] = "";
+      });
+
+      applyAlarmRanksToRows();
+      sortByCompletenessAndReindex();
+      buildAlarms();
+
+      renderHeader();
+      applyFilter();
+      setStatus(`Column "${name}" added.`, "");
+    }
+
+    function deleteColumn(colName) {
+      if (!colName) return;
+      if (PRIORITY_COLS.includes(colName)) {
+        alert("This is a core column and cannot be deleted.");
+        return;
+      }
+
+      currentColumns = currentColumns.filter(c => c !== colName);
+      fullItems.forEach(row => delete row[colName]);
+
+      applyAlarmRanksToRows();
+      sortByCompletenessAndReindex();
+      buildAlarms();
+
+      renderHeader();
+      applyFilter();
+    }
+
+    function cancelEdit() {
+      if (!baselineItems || !Array.isArray(baselineItems)) return;
+      setData(baselineItems);
+      searchInput.value = "";
+      editMode = false;
+      updateEditModeUI();
+    }
+
+    // ========= Server calls =========
+    async function loadFromServer() {
+      try {
+        setLoading(true);
+        setStatus("Loading data ...", "");
+
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "list" })
+        });
+
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+        const data = await parseApiJson(resp);
+        const items = data.items || [];
+        console.log("Data loaded from server (parsed):", items);
+
+        baselineItems = JSON.parse(JSON.stringify(items));
+        setData(items);
+        setStatus(``, "success");
+      } catch (err) {
+        console.error("Error loading from server:", err);
+        setStatus("Error while loading data from server.", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function uploadGridToServer() {
+      const rows = collectTableDataFromDom();
+      if (!rows.length) {
+        setStatus(
+          "There is no data to upload. Make sure the grid has at least one row with a Registration Number.",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setStatus("Saving current grid to DynamoDB...", "");
+
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ records: rows })
+        });
+
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+        const data = await parseApiJson(resp);
+        console.log("Server response for save (parsed):", data);
+
+        const saved = data.saved ?? rows.length;
+        setStatus(`Saved ${saved} rows successfully to DynamoDB.`, "success");
+
+        await loadFromServer();
+      } catch (err) {
+        console.error("Error saving to server:", err);
+        setStatus("Error while saving data to server.", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ========= Excel handling =========
+    excelInput.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) {
+        hasDataInGrid = false;
+        btnUpload.disabled = true;
+        setRowCount(0);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[firstSheetName];
+
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+          const validRows = rows.filter(r => r[PK_NAME]);
+          console.log("Rows loaded from Excel:", validRows);
+
+          if (validRows.length === 0) {
+            setStatus("The Excel file does not contain a valid 'Registration Number' column.", "error");
+            hasDataInGrid = false;
+            btnUpload.disabled = true;
+            setData([]);
+            return;
+          }
+
+          setData(validRows);
+          setStatus(`File loaded. ${validRows.length} rows are ready in the grid (you can edit them).`, "success");
+        } catch (err) {
+          console.error("Error reading Excel file:", err);
+          setStatus("Error while reading the Excel file.", "error");
+          hasDataInGrid = false;
+          btnUpload.disabled = true;
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+
+    // ========= live edit -> update alarms + order =========
+    let _editDebounce = null;
+    tableBody.addEventListener("input", (e) => {
+      if (!editMode) return;
+      const td = e.target.closest("td");
+      const tr = e.target.closest("tr");
+      if (!td || !tr) return;
+      const col = td.dataset.colName;
+      if (!col) return;
+
+      const rowId = tr.dataset.rowId;
+      const row = fullItems.find(r => r._rowId === rowId);
+      if (!row) return;
+
+      row[col] = td.textContent.trim();
+
+      clearTimeout(_editDebounce);
+      _editDebounce = setTimeout(() => {
+        applyAlarmRanksToRows();
+        sortByCompletenessAndReindex();
+        buildAlarms();
+        applyFilter();
+      }, 250);
+    });
+
+    // ========= Alarm panel events =========
+    alarmBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleAlarmPanel();
+    });
+
+    alarmClose.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAlarmPanel();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!alarmPanel.contains(e.target) && !alarmBtn.contains(e.target)) {
+        closeAlarmPanel();
+      }
+    });
+
+    // ========= Events & init =========
+    btnReload.addEventListener("click", loadFromServer);
+    btnUpload.addEventListener("click", uploadGridToServer);
+    btnAddRow.addEventListener("click", addRow);
+    btnCancelEdit.addEventListener("click", cancelEdit);
+    searchInput.addEventListener("input", applyFilter);
+
+    editToggleBtn.addEventListener("click", () => {
+      editMode = !editMode;
+      updateEditModeUI();
+    });
+
+    setData([]);
+    loadFromServer();
+  </script>
+</body>
+
+</html>
