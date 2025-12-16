@@ -70,11 +70,6 @@
       gap: 8px;
     }
 
-    .subtitle {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
     .tag-pill {
       font-size: 0.8rem;
       padding: 4px 10px;
@@ -340,33 +335,6 @@
       color: #111827;
     }
 
-    .th-content {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-    }
-
-    .th-buttons {
-      display: inline-flex;
-      gap: 4px;
-      align-items: center;
-    }
-
-    .th-btn {
-      border-radius: 999px;
-      border: 1px solid #d1d5db;
-      background: #ffffff;
-      font-size: 0.7rem;
-      padding: 1px 5px;
-      cursor: pointer;
-    }
-
-    .th-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
     .row-actions-btn {
       border-radius: 999px;
       border: 1px solid #fecaca;
@@ -572,6 +540,37 @@
       }
     }
 
+    /* ===== Fake details modal ===== */
+    #fakeModal .loading-card {
+      align-items: flex-start;
+      max-width: 560px;
+      width: min(560px, calc(100vw - 48px));
+      gap: 0;
+    }
+
+    /* خلي الكلام في نص الكونتينر */
+    #fakeModalBody {
+      text-align: center;
+    }
+
+    #fakeModalBody hr {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 10px 0;
+    }
+
+    .fake-invoice-block {
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .fake-invoice-block strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #991b1b;
+      font-weight: 800;
+    }
+
     /* ===== Fixed Media Queries ===== */
     @media (max-width: 900px) {
       body {
@@ -717,6 +716,12 @@
           <span>Load data from server</span>
         </button>
 
+        <!-- ✅ NEW: Integration Portal Button -->
+        <button id="btnIntegrationPortal" class="btn secondary" type="button" title="Open Integration Portal with random userId">
+          <span class="btn-icon">🔗</span>
+          <span>Integration portal</span>
+        </button>
+
         <div class="search-wrapper">
           <span style="font-size:0.8rem;color:var(--text-muted);">Search:</span>
           <input id="searchInput" class="search-input" type="text" placeholder="Search in any column..." />
@@ -795,12 +800,30 @@
     </div>
   </div>
 
+  <!-- Fake invoices details modal -->
+  <div id="fakeModal" class="loading-overlay" aria-hidden="true">
+    <div class="loading-card">
+      <div style="width:100%;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <div style="font-weight:900;color:#991b1b;">تفصيل الفواتير الوهمية</div>
+          <button id="fakeCloseBtn" class="btn small secondary" type="button" style="padding:5px 10px;">Close</button>
+        </div>
+        <div id="fakeModalBody" style="font-size:0.86rem;line-height:1.65;color:var(--text-main);"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ========= Config =========
     const API_URL = "https://lroggfzkgi.execute-api.us-east-1.amazonaws.com/prod/fetch-company";
     const PK_NAME = "Registration Number";
     const COMPANY_COL = "Company Name";
     const TYPE_COL = "Type of accounting";
+    const FAKE_COL = "فواتير وهميه";
+
+    // ✅ NEW: Integration Portal base link
+    const INTEGRATION_PORTAL_BASE =
+      "https://80260658-9969-4960-972a-30a2dce3136f-00-24ift3w1jdzt3.spock.replit.dev:8000/?userId=";
 
     const CURRENT_YEAR = new Date().getFullYear();
     const SALES_COL_PREFIX = "اجمالي مبيعات";
@@ -809,7 +832,6 @@
     const ALARM_LIMIT = 20000000;      // 20,000,000
     const ALARM_WARNING = 18000000;    // 18,000,000
 
-    // ثابت: اسم عمود الترقيم
     const IDX_COL_NAME = "#";
 
     const PRIORITY_COLS = [
@@ -817,6 +839,7 @@
       "Registration Number",
       "Type of accounting",
       "Gate type",
+      "فواتير وهميه",
       "اجمالي مبيعات 2025",
       "اجمالي ضريبة المبيعات 2025",
       "اجمالي مشتريات 2025",
@@ -842,9 +865,17 @@
     const tableHeaderRow = document.getElementById("tableHeaderRow");
     const rowCountEl = document.getElementById("rowCount");
 
+    // ✅ NEW: Integration Portal button
+    const btnIntegrationPortal = document.getElementById("btnIntegrationPortal");
+
     // Loading overlay
     const loadingOverlay = document.getElementById("loadingOverlay");
     const loadingTextEl = loadingOverlay.querySelector(".loading-text");
+
+    // Fake modal
+    const fakeModal = document.getElementById("fakeModal");
+    const fakeModalBody = document.getElementById("fakeModalBody");
+    const fakeCloseBtn = document.getElementById("fakeCloseBtn");
 
     function showOverlay(text = "Working...") {
       loadingTextEl.textContent = text;
@@ -857,14 +888,20 @@
       loadingOverlay.setAttribute("aria-hidden", "true");
     }
 
-    // alarms UI
-    const alarmBtn = document.getElementById("alarmBtn");
-    const alarmBadge = document.getElementById("alarmBadge");
-    const alarmPanel = document.getElementById("alarmPanel");
-    const alarmList = document.getElementById("alarmList");
-    const alarmClose = document.getElementById("alarmClose");
-    const alarmTitle = document.getElementById("alarmTitle");
-    const alarmSummary = document.getElementById("alarmSummary");
+    function openFakeModal() {
+      fakeModal.classList.add("show");
+      fakeModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeFakeModal() {
+      fakeModal.classList.remove("show");
+      fakeModal.setAttribute("aria-hidden", "true");
+      fakeModalBody.innerHTML = "";
+    }
+
+    fakeCloseBtn.addEventListener("click", closeFakeModal);
+    fakeModal.addEventListener("click", (e) => { if (e.target === fakeModal) closeFakeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFakeModal(); });
 
     // ========= state =========
     let currentColumns = [];
@@ -875,6 +912,11 @@
     let rowIdCounter = 0;
 
     let alarms = [];
+
+    // ✅ يمنع إعادة رسم الجدول أثناء الكتابة (علشان مايفقدش الفوكس)
+    let isTypingInCell = false;
+    let _typingTimer = null;
+    let _blurRenderTimer = null;
 
     function generateRowId() {
       rowIdCounter += 1;
@@ -895,6 +937,7 @@
     function setLoading(isLoading, text = "Working...") {
       btnReload.disabled = isLoading;
       btnUpload.disabled = isLoading || !hasDataInGrid || !editMode;
+      btnIntegrationPortal.disabled = isLoading;
       if (isLoading) {
         showOverlay(text);
         setStatus(text, "");
@@ -996,50 +1039,86 @@
       return "none";
     }
 
+    function hasFakeInvoices(row) {
+      const v = (row[FAKE_COL] ?? "").toString().trim();
+      return v !== "";
+    }
+
     function applyAlarmRanksToRows() {
       for (const row of fullItems) {
+        if (hasFakeInvoices(row)) {
+          row._alarmLevel = "fake";
+          row._alarmRank = -1;
+          continue;
+        }
         const level = getAlarmLevelForRow(row);
         row._alarmLevel = level;
         row._alarmRank = (level === "critical") ? 0 : (level === "warning") ? 1 : 2;
       }
     }
 
+    function buildFakeAlarmsForRow(row) {
+      const raw = (row[FAKE_COL] ?? "").toString().trim();
+      if (!raw) return [];
+
+      const parts = raw.split(" : ").map(s => s.trim()).filter(Boolean);
+      const out = [];
+
+      parts.forEach(p => {
+        const pieces = p.split(",").map(x => (x ?? "").trim());
+        const inv = pieces[0] || "-";
+        const dt = pieces[1] || "-";
+        const tax = pieces[2] || "-";
+        const name = pieces[3] || "-";
+
+        out.push({
+          level: "critical",
+          pk: (row[PK_NAME] ?? "").toString().trim(),
+          company: (row["Company Name"] ?? "").toString().trim(),
+          message: `تم رصد فاتوره وهميه برقم تسجيل ${tax} وباسم ${name} ورقم الفاتوره ${inv}`,
+          _meta: { inv, dt, tax, name }
+        });
+      });
+
+      return out;
+    }
+
     function buildAlarms() {
       const salesCol = findSalesColumnName();
       alarms = [];
 
-      if (!salesCol) {
-        updateAlarmUI();
-        return;
+      for (const row of fullItems) {
+        if (hasFakeInvoices(row)) alarms.push(...buildFakeAlarmsForRow(row));
       }
 
-      for (const row of fullItems) {
-        const level = getAlarmLevelForRow(row);
-        if (level === "none") continue;
+      if (salesCol) {
+        for (const row of fullItems) {
+          if (hasFakeInvoices(row)) continue;
+          const level = getAlarmLevelForRow(row);
+          if (level === "none") continue;
 
-        const company = (row[COMPANY_COL] ?? "").toString().trim() || "(بدون اسم)";
-        const pk = (row[PK_NAME] ?? "").toString().trim();
-        const sales = parseMoneyToNumber(row[salesCol]);
+          const company = (row["Company Name"] ?? "").toString().trim() || "(بدون اسم)";
+          const pk = (row[PK_NAME] ?? "").toString().trim();
+          const sales = parseMoneyToNumber(row[salesCol]);
 
-        const baseMsg = `شركة ${company} مسجله في نظام المحاسبه المبسط`;
-        const msg =
-          level === "critical"
-            ? `${baseMsg} وتخطط مبيعتها صافيه 20 مليون جنيه`
-            : `${baseMsg} واقتربت من 20 مليون جنيه (قربت على الحد)`;
+          const baseMsg = `شركة ${company} مسجله في نظام المحاسبه المبسط`;
+          const msg =
+            level === "critical"
+              ? `${baseMsg} وتخطت مبيعتها صافيه 20 مليون جنيه`
+              : `${baseMsg} واقتربت من 20 مليون جنيه (قربت على الحد)`;
 
-        alarms.push({
-          level,
-          pk,
-          company,
-          sales,
-          salesCol,
-          message: msg
-        });
+          alarms.push({ level, pk, company, sales, salesCol, message: msg });
+        }
       }
 
       const rank = { "critical": 0, "warning": 1, "none": 2 };
       alarms.sort((a, b) => {
+        const aIsFake = !!a._meta;
+        const bIsFake = !!b._meta;
+
+        if (aIsFake !== bIsFake) return aIsFake ? -1 : 1;
         if (rank[a.level] !== rank[b.level]) return rank[a.level] - rank[b.level];
+
         const sa = Number.isFinite(a.sales) ? a.sales : 0;
         const sb = Number.isFinite(b.sales) ? b.sales : 0;
         return sb - sa;
@@ -1047,6 +1126,15 @@
 
       updateAlarmUI();
     }
+
+    // alarms UI
+    const alarmBtn = document.getElementById("alarmBtn");
+    const alarmBadge = document.getElementById("alarmBadge");
+    const alarmPanel = document.getElementById("alarmPanel");
+    const alarmList = document.getElementById("alarmList");
+    const alarmClose = document.getElementById("alarmClose");
+    const alarmTitle = document.getElementById("alarmTitle");
+    const alarmSummary = document.getElementById("alarmSummary");
 
     function updateAlarmUI() {
       const count = alarms.length;
@@ -1078,7 +1166,7 @@
         item.className = "alarm-item";
 
         const dot = document.createElement("div");
-        dot.className = "alarm-dot " + a.level;
+        dot.className = "alarm-dot " + (a.level === "critical" ? "critical" : (a.level === "warning" ? "warning" : ""));
 
         const txtWrap = document.createElement("div");
 
@@ -1088,11 +1176,18 @@
 
         const sub = document.createElement("div");
         sub.className = "alarm-sub";
-        const salesText = Number.isFinite(a.sales) ? a.sales.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "";
-        sub.textContent = `(${a.salesCol}: ${salesText})`;
+
+        if (a._meta && a._meta.dt) {
+          sub.textContent = `(${a._meta.dt})`;
+        } else if (a.salesCol) {
+          const salesText = Number.isFinite(a.sales) ? a.sales.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "";
+          sub.textContent = `(${a.salesCol}: ${salesText})`;
+        } else {
+          sub.textContent = "";
+        }
 
         txtWrap.appendChild(t);
-        txtWrap.appendChild(sub);
+        if (sub.textContent) txtWrap.appendChild(sub);
 
         item.appendChild(dot);
         item.appendChild(txtWrap);
@@ -1153,11 +1248,7 @@
       const colSet = new Set();
       (items || []).forEach(row => {
         Object.keys(row || {}).forEach(k => {
-          if (k === "_rowId") return;
-          if (k === "_idx") return;
-          if (k === "_origOrder") return;
-          if (k === "_alarmLevel") return;
-          if (k === "_alarmRank") return;
+          if (k === "_rowId" || k === "_idx" || k === "_origOrder" || k === "_alarmLevel" || k === "_alarmRank") return;
           colSet.add(k);
         });
       });
@@ -1170,7 +1261,6 @@
 
       const ordered = PRIORITY_COLS.filter(c => colSet.has(c)).concat(remaining);
       currentColumns = ordered;
-      console.log("Columns order:", currentColumns);
     }
 
     function renderHeader() {
@@ -1180,44 +1270,9 @@
       thIdx.textContent = IDX_COL_NAME;
       tableHeaderRow.appendChild(thIdx);
 
-      currentColumns.forEach((col, index) => {
+      currentColumns.forEach((col) => {
         const th = document.createElement("th");
-        if (editMode) {
-          const wrapper = document.createElement("div");
-          wrapper.className = "th-content";
-
-          const labelSpan = document.createElement("span");
-          labelSpan.textContent = col;
-
-          const btns = document.createElement("div");
-          btns.className = "th-buttons";
-
-          if (!PRIORITY_COLS.includes(col)) {
-            const delBtn = document.createElement("button");
-            delBtn.type = "button";
-            delBtn.className = "th-btn";
-            delBtn.textContent = "✕";
-            delBtn.title = "Delete column";
-            delBtn.addEventListener("click", () => deleteColumn(col));
-            btns.appendChild(delBtn);
-          }
-
-          if (index === currentColumns.length - 1) {
-            const addBtn = document.createElement("button");
-            addBtn.type = "button";
-            addBtn.className = "th-btn";
-            addBtn.textContent = "+";
-            addBtn.title = "Add new column";
-            addBtn.addEventListener("click", addColumn);
-            btns.appendChild(addBtn);
-          }
-
-          wrapper.appendChild(labelSpan);
-          if (btns.childNodes.length > 0) wrapper.appendChild(btns);
-          th.appendChild(wrapper);
-        } else {
-          th.textContent = col;
-        }
+        th.textContent = col;
         tableHeaderRow.appendChild(th);
       });
 
@@ -1228,6 +1283,43 @@
       }
     }
 
+    function showFakeDetails(raw) {
+      const parts = (raw || "").toString().split(" : ").map(s => s.trim()).filter(Boolean);
+      fakeModalBody.innerHTML = "";
+
+      if (!parts.length) {
+        fakeModalBody.textContent = "لا توجد تفاصيل.";
+        openFakeModal();
+        return;
+      }
+
+      parts.forEach((p, i) => {
+        const pieces = p.split(",").map(x => (x ?? "").trim());
+        const inv = pieces[0] || "-";
+        const dt = pieces[1] || "-";
+        const tax = pieces[2] || "-";
+        const name = pieces[3] || "-";
+
+        const block = document.createElement("div");
+        block.className = "fake-invoice-block";
+        block.innerHTML = `
+          <strong>تفصيل الفاتورة</strong>
+          بتاريخ : ${dt}<br>
+          برقم تسجيل : ${tax}<br>
+          باسم : ${name}<br>
+          رقم الفاتورة : ${inv}
+        `;
+        fakeModalBody.appendChild(block);
+
+        if (i < parts.length - 1) {
+          const hr = document.createElement("hr");
+          fakeModalBody.appendChild(hr);
+        }
+      });
+
+      openFakeModal();
+    }
+
     function renderRows(items) {
       tableBody.innerHTML = "";
 
@@ -1235,19 +1327,31 @@
         const tr = document.createElement("tr");
         tr.dataset.rowId = row._rowId || "";
 
-        if (row._alarmLevel === "critical") tr.classList.add("alarm-critical");
+        if (row._alarmLevel === "fake" || row._alarmLevel === "critical") tr.classList.add("alarm-critical");
         else if (row._alarmLevel === "warning") tr.classList.add("alarm-warning");
 
         const tdIdx = document.createElement("td");
         tdIdx.textContent = (row._idx != null && row._idx !== "") ? String(row._idx) : "";
-        tdIdx.contentEditable = "false";
         tr.appendChild(tdIdx);
 
         currentColumns.forEach((col, index) => {
           const td = document.createElement("td");
-          td.textContent = row[col] ?? "";
-          td.contentEditable = editMode ? "true" : "false";
           td.dataset.colName = col;
+
+          if (col === FAKE_COL && (row[col] ?? "").toString().trim()) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn small danger";
+            btn.textContent = "عرض التفاصيل";
+            btn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              showFakeDetails(row[col]);
+            });
+            td.appendChild(btn);
+          } else {
+            td.textContent = row[col] ?? "";
+            td.contentEditable = editMode ? "true" : "false";
+          }
 
           if (index === 0 && col === PK_NAME) td.classList.add("pk-cell");
           tr.appendChild(td);
@@ -1259,11 +1363,7 @@
           delRowBtn.type = "button";
           delRowBtn.className = "row-actions-btn";
           delRowBtn.textContent = "🗑";
-          delRowBtn.title = "Delete row";
-          delRowBtn.addEventListener("click", () => {
-            const rowId = tr.dataset.rowId;
-            deleteRow(rowId);
-          });
+          delRowBtn.addEventListener("click", () => deleteRow(tr.dataset.rowId));
           actionsTd.appendChild(delRowBtn);
           tr.appendChild(actionsTd);
         }
@@ -1295,7 +1395,6 @@
       renderRows(fullItems);
     }
 
-    // ========= filter =========
     function applyFilter() {
       const q = searchInput.value.trim().toLowerCase();
       if (!q) {
@@ -1305,38 +1404,34 @@
       }
 
       const filtered = fullItems.filter(row =>
-        currentColumns.some(col => {
-          const v = (row[col] ?? "").toString().toLowerCase();
-          return v.includes(q);
-        })
+        currentColumns.some(col => ((row[col] ?? "") + "").toLowerCase().includes(q))
       );
 
       renderRows(filtered);
       setStatus(`Showing ${filtered.length} of ${fullItems.length} rows (filtered).`, "");
     }
 
-    // ========= collect grid data for save =========
     function collectTableDataFromDom() {
       const rows = [];
       const trs = tableBody.querySelectorAll("tr");
 
       trs.forEach(tr => {
+        const rowId = tr.dataset.rowId;
+        const srcRow = fullItems.find(r => r._rowId === rowId);
         const tds = Array.from(tr.querySelectorAll("td")).slice(1);
         const obj = {};
 
         currentColumns.forEach((col, colIndex) => {
-          const td = tds[colIndex];
-          obj[col] = td ? td.textContent.trim() : "";
+          if (col === FAKE_COL) obj[col] = (srcRow?.[FAKE_COL] ?? "");
+          else obj[col] = tds[colIndex] ? tds[colIndex].textContent.trim() : "";
         });
 
         if (obj[PK_NAME]) rows.push(obj);
       });
 
-      console.log("Grid data to upload:", rows);
       return rows;
     }
 
-    // ========= Edit mode UI =========
     function updateEditModeUI() {
       if (editMode) {
         editToggleBtn.classList.add("on");
@@ -1353,7 +1448,6 @@
       applyFilter();
     }
 
-    // ========= row / column ops =========
     function addRow() {
       const newRow = {};
       currentColumns.forEach(col => newRow[col] = "");
@@ -1422,46 +1516,6 @@
       }
     }
 
-    function addColumn() {
-      const name = prompt("New column name:");
-      if (!name) return;
-      if (currentColumns.includes(name)) {
-        alert("Column already exists.");
-        return;
-      }
-
-      currentColumns.push(name);
-      fullItems.forEach(row => {
-        if (!(name in row)) row[name] = "";
-      });
-
-      applyAlarmRanksToRows();
-      sortByCompletenessAndReindex();
-      buildAlarms();
-
-      renderHeader();
-      applyFilter();
-      setStatus(`Column "${name}" added.`, "");
-    }
-
-    function deleteColumn(colName) {
-      if (!colName) return;
-      if (PRIORITY_COLS.includes(colName)) {
-        alert("This is a core column and cannot be deleted.");
-        return;
-      }
-
-      currentColumns = currentColumns.filter(c => c !== colName);
-      fullItems.forEach(row => delete row[colName]);
-
-      applyAlarmRanksToRows();
-      sortByCompletenessAndReindex();
-      buildAlarms();
-
-      renderHeader();
-      applyFilter();
-    }
-
     function cancelEdit() {
       if (!baselineItems || !Array.isArray(baselineItems)) return;
       setData(baselineItems);
@@ -1470,7 +1524,6 @@
       updateEditModeUI();
     }
 
-    // ========= Server calls =========
     async function loadFromServer() {
       try {
         setLoading(true, "Loading data...");
@@ -1505,19 +1558,24 @@
       }
 
       try {
-        setLoading(true, "Saving table ...");
+        setLoading(true, "Saving table (merge, no overwrite) ...");
 
         const resp = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ records: rows })
+          // ✅ merge علشان مايمسحش القديم
+          body: JSON.stringify({ mode: "merge", skip_empty: true, records: rows })
         });
 
         if (!resp.ok) throw new Error("HTTP " + resp.status);
 
         const data = await parseApiJson(resp);
-        const saved = data.saved ?? rows.length;
-        setStatus(`Saved ${saved} rows successfully to DynamoDB.`, "success");
+        const merged = data.merged ?? 0;
+        const created = data.created ?? 0;
+        const errors = data.errors ?? 0;
+
+        if (errors > 0) setStatus(`Saved with warnings: merged ${merged}, created ${created}, errors ${errors}.`, "error");
+        else setStatus(`Saved successfully: merged ${merged}, created ${created}.`, "success");
 
         await loadFromServer();
       } catch (err) {
@@ -1528,7 +1586,53 @@
       }
     }
 
-    // ========= Excel handling =========
+    // ✅ دمج Excel داخل الجدول الحالي بدون ما يستبدله
+    function mergeExcelIntoGrid(excelRows) {
+      const pkKey = PK_NAME;
+
+      const map = new Map();
+      fullItems.forEach(r => {
+        const pk = (r[pkKey] ?? "").toString().trim();
+        if (pk) map.set(pk, r);
+      });
+
+      let updated = 0;
+      let added = 0;
+
+      for (const xr of excelRows) {
+        const pk = (xr[pkKey] ?? "").toString().trim();
+        if (!pk) continue;
+
+        const existing = map.get(pk);
+
+        if (existing) {
+          for (const [k, v] of Object.entries(xr)) {
+            if (k === pkKey) continue;
+            const s = (v ?? "").toString().trim();
+            if (!s) continue; // الفاضي مايلمسش القديم
+            existing[k] = v;
+          }
+          updated += 1;
+        } else {
+          const copy = { ...xr };
+          copy._rowId = generateRowId();
+          copy._origOrder = fullItems.length + 1;
+          fullItems.push(copy);
+          map.set(pk, copy);
+          added += 1;
+        }
+      }
+
+      buildColumnsFromItems(fullItems);
+      applyAlarmRanksToRows();
+      sortByCompletenessAndReindex();
+      buildAlarms();
+      renderHeader();
+      applyFilter();
+
+      return { updated, added };
+    }
+
     excelInput.addEventListener("change", (event) => {
       const file = event.target.files[0];
       if (!file) {
@@ -1557,8 +1661,13 @@
             return;
           }
 
-          setData(validRows);
-          setStatus(`File loaded. ${validRows.length} rows are ready in the grid (you can edit them).`, "success");
+          if (fullItems.length) {
+            const r = mergeExcelIntoGrid(validRows);
+            setStatus(`Excel merged: updated ${r.updated}, added ${r.added}. Now you can save to server.`, "success");
+          } else {
+            setData(validRows);
+            setStatus(`File loaded. ${validRows.length} rows are ready in the grid (you can edit them).`, "success");
+          }
         } catch (err) {
           console.error(err);
           setStatus("Error while reading the Excel file.", "error");
@@ -1570,15 +1679,25 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // ========= live edit -> update alarms + order =========
-    let _editDebounce = null;
+    // ✅ إصلاح مشكلة "الاديت بيقفل": ممنوع re-render / sort أثناء الكتابة
+    tableBody.addEventListener("focusin", (e) => {
+      if (!editMode) return;
+      const td = e.target.closest("td");
+      if (!td) return;
+      const col = td.dataset.colName;
+      if (!col || col === FAKE_COL) return;
+      isTypingInCell = true;
+    });
+
     tableBody.addEventListener("input", (e) => {
       if (!editMode) return;
+
       const td = e.target.closest("td");
       const tr = e.target.closest("tr");
       if (!td || !tr) return;
+
       const col = td.dataset.colName;
-      if (!col) return;
+      if (!col || col === FAKE_COL) return;
 
       const rowId = tr.dataset.rowId;
       const row = fullItems.find(r => r._rowId === rowId);
@@ -1586,16 +1705,35 @@
 
       row[col] = td.textContent.trim();
 
-      clearTimeout(_editDebounce);
-      _editDebounce = setTimeout(() => {
+      isTypingInCell = true;
+      clearTimeout(_typingTimer);
+      _typingTimer = setTimeout(() => {
+        // تحديث الإنذارات فقط (بدون sort/render)
+        applyAlarmRanksToRows();
+        buildAlarms();
+      }, 350);
+    });
+
+    tableBody.addEventListener("focusout", (e) => {
+      if (!editMode) return;
+
+      const td = e.target.closest("td");
+      if (!td) return;
+      const col = td.dataset.colName;
+      if (!col || col === FAKE_COL) return;
+
+      isTypingInCell = false;
+
+      clearTimeout(_blurRenderTimer);
+      _blurRenderTimer = setTimeout(() => {
+        // بعد ما يسيب الخانة: اعمل ترتيب + رندر مرة واحدة
         applyAlarmRanksToRows();
         sortByCompletenessAndReindex();
         buildAlarms();
         applyFilter();
-      }, 250);
-    });
+      }, 0);
+    }, true);
 
-    // ========= Alarm panel events =========
     alarmBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleAlarmPanel();
@@ -1607,22 +1745,64 @@
     });
 
     document.addEventListener("click", (e) => {
-      if (!alarmPanel.contains(e.target) && !alarmBtn.contains(e.target)) {
-        closeAlarmPanel();
-      }
+      if (!alarmPanel.contains(e.target) && !alarmBtn.contains(e.target)) closeAlarmPanel();
     });
 
-    // ========= Events & init =========
     btnReload.addEventListener("click", loadFromServer);
     btnUpload.addEventListener("click", uploadGridToServer);
     btnAddRow.addEventListener("click", addRow);
     btnCancelEdit.addEventListener("click", cancelEdit);
-    searchInput.addEventListener("input", applyFilter);
+
+    searchInput.addEventListener("input", () => {
+      // لو بيكتب في خلية، ماتعملش رندر عشان مايفقدش الفوكس
+      if (isTypingInCell) return;
+      applyFilter();
+    });
 
     editToggleBtn.addEventListener("click", () => {
       editMode = !editMode;
       updateEditModeUI();
     });
+
+    // ✅ NEW: super-random UUID (same format 8-4-4-4-12)
+    function generateUserId() {
+      if (window.crypto && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID(); // 8-4-4-4-12
+      }
+      // fallback
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      // set version (4) and variant (RFC4122)
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+      const hex = [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+      return (
+        hex.slice(0, 8) + "-" +
+        hex.slice(8, 12) + "-" +
+        hex.slice(12, 16) + "-" +
+        hex.slice(16, 20) + "-" +
+        hex.slice(20)
+      );
+    }
+
+    // ✅ NEW: Integration Portal click
+    btnIntegrationPortal.addEventListener("click", async () => {
+    try {
+        const userId = generateUserId();
+        const url =
+        "https://80260658-9969-4960-972a-30a2dce3136f-00-24ift3w1jdzt3.spock.replit.dev:8000/?userId=" +
+        encodeURIComponent(userId);
+
+        // فتح في نفس الصفحة
+        window.location.href = url;
+
+    } catch (e) {
+        console.error(e);
+        setStatus("Failed to open integration portal.", "error");
+    }
+    });
+
 
     setData([]);
     loadFromServer();
