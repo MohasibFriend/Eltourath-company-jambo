@@ -546,11 +546,18 @@
       max-width: 560px;
       width: min(560px, calc(100vw - 48px));
       gap: 0;
+
+      /* ✅ scroll container */
+      max-height: 80vh;
+      overflow: hidden;
     }
 
-    /* خلي الكلام في نص الكونتينر */
+    /* خلي الكلام في نص الكونتينر + ✅ scroll body */
     #fakeModalBody {
       text-align: center;
+      max-height: calc(80vh - 60px);
+      overflow: auto;
+      padding-right: 6px;
     }
 
     #fakeModalBody hr {
@@ -716,8 +723,8 @@
           <span>Load data from server</span>
         </button>
 
-        <!-- ✅ NEW: Integration Portal Button -->
-        <button id="btnIntegrationPortal" class="btn secondary" type="button" title="Open Integration Portal with random userId">
+        <button id="btnIntegrationPortal" class="btn secondary" type="button"
+          title="Open Integration Portal with random userId">
           <span class="btn-icon">🔗</span>
           <span>Integration portal</span>
         </button>
@@ -821,7 +828,6 @@
     const TYPE_COL = "Type of accounting";
     const FAKE_COL = "فواتير وهميه";
 
-    // ✅ NEW: Integration Portal base link
     const INTEGRATION_PORTAL_BASE =
       "https://80260658-9969-4960-972a-30a2dce3136f-00-24ift3w1jdzt3.spock.replit.dev:8000/?userId=";
 
@@ -829,8 +835,8 @@
     const SALES_COL_PREFIX = "اجمالي مبيعات";
     const SALES_COL_CURRENT = `${SALES_COL_PREFIX} ${CURRENT_YEAR}`;
 
-    const ALARM_LIMIT = 20000000;      // 20,000,000
-    const ALARM_WARNING = 18000000;    // 18,000,000
+    const ALARM_LIMIT = 20000000; // 20,000,000
+    const ALARM_WARNING = 18000000; // 18,000,000
 
     const IDX_COL_NAME = "#";
 
@@ -865,7 +871,6 @@
     const tableHeaderRow = document.getElementById("tableHeaderRow");
     const rowCountEl = document.getElementById("rowCount");
 
-    // ✅ NEW: Integration Portal button
     const btnIntegrationPortal = document.getElementById("btnIntegrationPortal");
 
     // Loading overlay
@@ -1057,38 +1062,62 @@
       }
     }
 
-   function buildFakeAlarmsForRow(row) {
-  const raw = (row[FAKE_COL] ?? "").toString().trim();
-  if (!raw) return [];
+    // ✅ NEW: parse fake invoices into structured list (extract year from date)
+    function parseFakeParts(raw) {
+      const parts = (raw || "").toString().split(" : ").map(s => s.trim()).filter(Boolean);
+      const out = [];
+      parts.forEach(p => {
+        const pieces = p.split(",").map(x => (x ?? "").trim());
+        const inv = pieces[0] || "-";
+        const dt = pieces[1] || "-";
+        const tax = pieces[2] || "-";
+        const name = pieces[3] || "-";
+        const m = String(dt).match(/(\d{4})/);
+        const year = m ? m[1] : "غير معروف";
+        out.push({ inv, dt, tax, name, year });
+      });
+      return out;
+    }
 
-  const parts = raw.split(" : ").map(s => s.trim()).filter(Boolean);
-  const out = [];
+    // ✅ UPDATED: one alarm per (company + year) instead of one per invoice
+    function buildFakeAlarmsForRow(row) {
+      const raw = (row[FAKE_COL] ?? "").toString().trim();
+      if (!raw) return [];
 
-  parts.forEach(p => {
-    const pieces = p.split(",").map(x => (x ?? "").trim());
-    const inv = pieces[0] || "-";
-    const dt = pieces[1] || "-";
-    const tax = pieces[2] || "-";
-    const name = pieces[3] || "-";
-    const company = (row["Company Name"] ?? "").toString().trim() || "(بدون اسم)";
+      const company = (row[COMPANY_COL] ?? "").toString().trim() || "(بدون اسم)";
+      const pk = (row[PK_NAME] ?? "").toString().trim();
 
-    out.push({
-      level: "critical",
-      pk: (row[PK_NAME] ?? "").toString().trim(),
-      company,
-      message: `تم رصد في شركة ${company} فاتوره وهميه برقم تسجيل ${tax} وباسم ${name} ورقم الفاتوره ${inv}`,
-      _meta: { inv, dt, tax, name }
-    });
-  });
+      const details = parseFakeParts(raw);
 
-  return out;
-}
+      // group by year
+      const byYear = new Map();
+      details.forEach(d => {
+        const y = d.year || "غير معروف";
+        if (!byYear.has(y)) byYear.set(y, []);
+        byYear.get(y).push(d);
+      });
 
+      const out = [];
+      for (const [year, list] of byYear.entries()) {
+        out.push({
+          level: "critical",
+          pk,
+          company,
+          _fakeGroup: true,
+          _year: year,
+          _count: list.length,
+          _details: list,
+          message: `يوجد بشركة ${company} فواتير وهميه في سنة ${year} يرجي الانتباه لذلك واتخاذ الاجراءات اللازمه`
+        });
+      }
+      return out;
+    }
 
     function buildAlarms() {
       const salesCol = findSalesColumnName();
       alarms = [];
 
+      // fake first
       for (const row of fullItems) {
         if (hasFakeInvoices(row)) alarms.push(...buildFakeAlarmsForRow(row));
       }
@@ -1099,7 +1128,7 @@
           const level = getAlarmLevelForRow(row);
           if (level === "none") continue;
 
-          const company = (row["Company Name"] ?? "").toString().trim() || "(بدون اسم)";
+          const company = (row[COMPANY_COL] ?? "").toString().trim() || "(بدون اسم)";
           const pk = (row[PK_NAME] ?? "").toString().trim();
           const sales = parseMoneyToNumber(row[salesCol]);
 
@@ -1115,8 +1144,8 @@
 
       const rank = { "critical": 0, "warning": 1, "none": 2 };
       alarms.sort((a, b) => {
-        const aIsFake = !!a._meta;
-        const bIsFake = !!b._meta;
+        const aIsFake = !!a._fakeGroup;
+        const bIsFake = !!b._fakeGroup;
 
         if (aIsFake !== bIsFake) return aIsFake ? -1 : 1;
         if (rank[a.level] !== rank[b.level]) return rank[a.level] - rank[b.level];
@@ -1179,8 +1208,9 @@
         const sub = document.createElement("div");
         sub.className = "alarm-sub";
 
-        if (a._meta && a._meta.dt) {
-          sub.textContent = `(${a._meta.dt})`;
+        // ✅ fake group: show count instead of one date
+        if (a._fakeGroup) {
+          sub.textContent = `(عدد الفواتير الوهمية: ${a._count})`;
         } else if (a.salesCol) {
           const salesText = Number.isFinite(a.sales) ? a.sales.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "";
           sub.textContent = `(${a.salesCol}: ${salesText})`;
@@ -1565,7 +1595,6 @@
         const resp = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // ✅ merge علشان مايمسحش القديم
           body: JSON.stringify({ mode: "merge", skip_empty: true, records: rows })
         });
 
@@ -1611,7 +1640,7 @@
           for (const [k, v] of Object.entries(xr)) {
             if (k === pkKey) continue;
             const s = (v ?? "").toString().trim();
-            if (!s) continue; // الفاضي مايلمسش القديم
+            if (!s) continue;
             existing[k] = v;
           }
           updated += 1;
@@ -1710,7 +1739,6 @@
       isTypingInCell = true;
       clearTimeout(_typingTimer);
       _typingTimer = setTimeout(() => {
-        // تحديث الإنذارات فقط (بدون sort/render)
         applyAlarmRanksToRows();
         buildAlarms();
       }, 350);
@@ -1728,7 +1756,6 @@
 
       clearTimeout(_blurRenderTimer);
       _blurRenderTimer = setTimeout(() => {
-        // بعد ما يسيب الخانة: اعمل ترتيب + رندر مرة واحدة
         applyAlarmRanksToRows();
         sortByCompletenessAndReindex();
         buildAlarms();
@@ -1756,7 +1783,6 @@
     btnCancelEdit.addEventListener("click", cancelEdit);
 
     searchInput.addEventListener("input", () => {
-      // لو بيكتب في خلية، ماتعملش رندر عشان مايفقدش الفوكس
       if (isTypingInCell) return;
       applyFilter();
     });
@@ -1766,15 +1792,12 @@
       updateEditModeUI();
     });
 
-    // ✅ NEW: super-random UUID (same format 8-4-4-4-12)
     function generateUserId() {
       if (window.crypto && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID(); // 8-4-4-4-12
+        return crypto.randomUUID();
       }
-      // fallback
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
-      // set version (4) and variant (RFC4122)
       bytes[6] = (bytes[6] & 0x0f) | 0x40;
       bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
@@ -1788,23 +1811,16 @@
       );
     }
 
-    // ✅ NEW: Integration Portal click
     btnIntegrationPortal.addEventListener("click", async () => {
-    try {
+      try {
         const userId = generateUserId();
-        const url =
-        "https://80260658-9969-4960-972a-30a2dce3136f-00-24ift3w1jdzt3.spock.replit.dev:8000/?userId=" +
-        encodeURIComponent(userId);
-
-        // فتح في نفس الصفحة
+        const url = INTEGRATION_PORTAL_BASE + encodeURIComponent(userId);
         window.location.href = url;
-
-    } catch (e) {
+      } catch (e) {
         console.error(e);
         setStatus("Failed to open integration portal.", "error");
-    }
+      }
     });
-
 
     setData([]);
     loadFromServer();
