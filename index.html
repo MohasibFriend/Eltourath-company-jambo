@@ -1057,31 +1057,33 @@
       }
     }
 
-    function buildFakeAlarmsForRow(row) {
-      const raw = (row[FAKE_COL] ?? "").toString().trim();
-      if (!raw) return [];
+   function buildFakeAlarmsForRow(row) {
+  const raw = (row[FAKE_COL] ?? "").toString().trim();
+  if (!raw) return [];
 
-      const parts = raw.split(" : ").map(s => s.trim()).filter(Boolean);
-      const out = [];
+  const parts = raw.split(" : ").map(s => s.trim()).filter(Boolean);
+  const out = [];
 
-      parts.forEach(p => {
-        const pieces = p.split(",").map(x => (x ?? "").trim());
-        const inv = pieces[0] || "-";
-        const dt = pieces[1] || "-";
-        const tax = pieces[2] || "-";
-        const name = pieces[3] || "-";
+  parts.forEach(p => {
+    const pieces = p.split(",").map(x => (x ?? "").trim());
+    const inv = pieces[0] || "-";
+    const dt = pieces[1] || "-";
+    const tax = pieces[2] || "-";
+    const name = pieces[3] || "-";
+    const company = (row["Company Name"] ?? "").toString().trim() || "(بدون اسم)";
 
-        out.push({
-          level: "critical",
-          pk: (row[PK_NAME] ?? "").toString().trim(),
-          company: (row["Company Name"] ?? "").toString().trim(),
-          message: `تم رصد فاتوره وهميه برقم تسجيل ${tax} وباسم ${name} ورقم الفاتوره ${inv}`,
-          _meta: { inv, dt, tax, name }
-        });
-      });
+    out.push({
+      level: "critical",
+      pk: (row[PK_NAME] ?? "").toString().trim(),
+      company,
+      message: `تم رصد في شركة ${company} فاتوره وهميه برقم تسجيل ${tax} وباسم ${name} ورقم الفاتوره ${inv}`,
+      _meta: { inv, dt, tax, name }
+    });
+  });
 
-      return out;
-    }
+  return out;
+}
+
 
     function buildAlarms() {
       const salesCol = findSalesColumnName();
