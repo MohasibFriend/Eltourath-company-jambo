@@ -305,6 +305,7 @@
       padding: 6px 10px;
       text-align: left;
       white-space: nowrap;
+      vertical-align: middle;
     }
 
     th {
@@ -347,6 +348,45 @@
 
     .row-actions-btn:hover {
       background: #fecaca;
+    }
+
+    /* ✅ Pretty selects inside table cells (still posts plain text values) */
+    .cell-select {
+      width: 100%;
+      min-width: 140px;
+      border: 1px solid #d1d5db;
+      background: linear-gradient(180deg, #ffffff, #f9fafb);
+      color: var(--text-main);
+      border-radius: 12px;
+      padding: 6px 34px 6px 10px;
+      font-size: 0.82rem;
+      outline: none;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    td.select-td {
+      position: relative;
+      padding: 4px 10px;
+    }
+
+    td.select-td::after {
+      content: "▾";
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6b7280;
+      pointer-events: none;
+      font-size: 0.85rem;
+    }
+
+    .cell-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+      background: #ffffff;
     }
 
     /* ====== Alarm UI ====== */
@@ -546,13 +586,10 @@
       max-width: 560px;
       width: min(560px, calc(100vw - 48px));
       gap: 0;
-
-      /* ✅ scroll container */
       max-height: 80vh;
       overflow: hidden;
     }
 
-    /* خلي الكلام في نص الكونتينر + ✅ scroll body */
     #fakeModalBody {
       text-align: center;
       max-height: calc(80vh - 60px);
@@ -678,6 +715,10 @@
       th,
       td {
         padding: 6px 8px;
+      }
+
+      .cell-select {
+        min-width: 0;
       }
     }
 
@@ -826,6 +867,7 @@
     const PK_NAME = "Registration Number";
     const COMPANY_COL = "Company Name";
     const TYPE_COL = "Type of accounting";
+    const GATE_COL = "Gate type";
     const FAKE_COL = "فواتير وهميه";
 
     const INTEGRATION_PORTAL_BASE =
@@ -855,6 +897,9 @@
       "اجمالي مشتريات 2024",
       "اجمالي ضريبة المشتريات 2024",
     ];
+
+    const TYPE_OPTIONS = ["", "مبسط", "عادي"];
+    const GATE_OPTIONS = ["", "بوابة جديدة", "بوابة قديمة"];
 
     // ========= DOM refs =========
     const btnReload = document.getElementById("btnReload");
@@ -1062,7 +1107,6 @@
       }
     }
 
-    // ✅ NEW: parse fake invoices into structured list (extract year from date)
     function parseFakeParts(raw) {
       const parts = (raw || "").toString().split(" : ").map(s => s.trim()).filter(Boolean);
       const out = [];
@@ -1079,7 +1123,6 @@
       return out;
     }
 
-    // ✅ UPDATED: one alarm per (company + year) instead of one per invoice
     function buildFakeAlarmsForRow(row) {
       const raw = (row[FAKE_COL] ?? "").toString().trim();
       if (!raw) return [];
@@ -1089,7 +1132,6 @@
 
       const details = parseFakeParts(raw);
 
-      // group by year
       const byYear = new Map();
       details.forEach(d => {
         const y = d.year || "غير معروف";
@@ -1117,7 +1159,6 @@
       const salesCol = findSalesColumnName();
       alarms = [];
 
-      // fake first
       for (const row of fullItems) {
         if (hasFakeInvoices(row)) alarms.push(...buildFakeAlarmsForRow(row));
       }
@@ -1208,7 +1249,6 @@
         const sub = document.createElement("div");
         sub.className = "alarm-sub";
 
-        // ✅ fake group: show count instead of one date
         if (a._fakeGroup) {
           sub.textContent = `(عدد الفواتير الوهمية: ${a._count})`;
         } else if (a.salesCol) {
@@ -1352,6 +1392,20 @@
       openFakeModal();
     }
 
+    function makeSelectCell({ value, options, onChange }) {
+      const sel = document.createElement("select");
+      sel.className = "cell-select";
+      options.forEach(opt => {
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt === "" ? "—" : opt;
+        sel.appendChild(o);
+      });
+      sel.value = options.includes(value) ? value : (value ? value : "");
+      sel.addEventListener("change", () => onChange(sel.value));
+      return sel;
+    }
+
     function renderRows(items) {
       tableBody.innerHTML = "";
 
@@ -1370,6 +1424,7 @@
           const td = document.createElement("td");
           td.dataset.colName = col;
 
+          // ✅ Fake details button
           if (col === FAKE_COL && (row[col] ?? "").toString().trim()) {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -1380,7 +1435,32 @@
               showFakeDetails(row[col]);
             });
             td.appendChild(btn);
-          } else {
+          }
+          // ✅ Select for Type of accounting + Gate type (only in edit mode)
+          else if (editMode && (col === TYPE_COL || col === GATE_COL)) {
+            td.classList.add("select-td");
+
+            const currentVal = (row[col] ?? "").toString().trim();
+            const options = (col === TYPE_COL) ? TYPE_OPTIONS : GATE_OPTIONS;
+
+            const selectEl = makeSelectCell({
+              value: currentVal,
+              options,
+              onChange: (val) => {
+                row[col] = val; // plain text saved to row (backend-safe)
+                clearTimeout(_typingTimer);
+                _typingTimer = setTimeout(() => {
+                  applyAlarmRanksToRows();
+                  buildAlarms();
+                }, 50);
+              }
+            });
+
+            td.appendChild(selectEl);
+            td.contentEditable = "false";
+          }
+          // ✅ Normal cell
+          else {
             td.textContent = row[col] ?? "";
             td.contentEditable = editMode ? "true" : "false";
           }
@@ -1450,12 +1530,26 @@
       trs.forEach(tr => {
         const rowId = tr.dataset.rowId;
         const srcRow = fullItems.find(r => r._rowId === rowId);
+
         const tds = Array.from(tr.querySelectorAll("td")).slice(1);
         const obj = {};
 
         currentColumns.forEach((col, colIndex) => {
+          const cell = tds[colIndex];
+          if (!cell) {
+            obj[col] = "";
+            return;
+          }
+
+          // ✅ if cell contains select: take select.value (plain text)
+          const sel = cell.querySelector("select");
+          if (sel) {
+            obj[col] = sel.value;
+            return;
+          }
+
           if (col === FAKE_COL) obj[col] = (srcRow?.[FAKE_COL] ?? "");
-          else obj[col] = tds[colIndex] ? tds[colIndex].textContent.trim() : "";
+          else obj[col] = cell.textContent.trim();
         });
 
         if (obj[PK_NAME]) rows.push(obj);
@@ -1617,7 +1711,6 @@
       }
     }
 
-    // ✅ دمج Excel داخل الجدول الحالي بدون ما يستبدله
     function mergeExcelIntoGrid(excelRows) {
       const pkKey = PK_NAME;
 
@@ -1710,9 +1803,11 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // ✅ إصلاح مشكلة "الاديت بيقفل": ممنوع re-render / sort أثناء الكتابة
+    // ✅ ignore selects from "typing" logic
     tableBody.addEventListener("focusin", (e) => {
       if (!editMode) return;
+      if (e.target && e.target.tagName === "SELECT") return;
+
       const td = e.target.closest("td");
       if (!td) return;
       const col = td.dataset.colName;
@@ -1722,6 +1817,7 @@
 
     tableBody.addEventListener("input", (e) => {
       if (!editMode) return;
+      if (e.target && e.target.tagName === "SELECT") return;
 
       const td = e.target.closest("td");
       const tr = e.target.closest("tr");
@@ -1746,6 +1842,7 @@
 
     tableBody.addEventListener("focusout", (e) => {
       if (!editMode) return;
+      if (e.target && e.target.tagName === "SELECT") return;
 
       const td = e.target.closest("td");
       if (!td) return;
