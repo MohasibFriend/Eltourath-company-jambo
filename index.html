@@ -124,6 +124,13 @@
       box-shadow: none;
     }
 
+    .btn.warning {
+      background: #fef9c3;
+      color: #92400e;
+      border-color: #fde68a;
+      box-shadow: none;
+    }
+
     .btn:disabled {
       opacity: 0.6;
       cursor: default;
@@ -350,7 +357,6 @@
       background: #fecaca;
     }
 
-    /* ✅ Pretty selects inside table cells (still posts plain text values) */
     .cell-select {
       width: 100%;
       min-width: 140px;
@@ -580,8 +586,9 @@
       }
     }
 
-    /* ===== Fake details modal ===== */
-    #fakeModal .loading-card {
+    /* ===== Details modals ===== */
+    #fakeModal .loading-card,
+    #docsModal .loading-card {
       align-items: flex-start;
       max-width: 560px;
       width: min(560px, calc(100vw - 48px));
@@ -590,20 +597,23 @@
       overflow: hidden;
     }
 
-    #fakeModalBody {
+    #fakeModalBody,
+    #docsModalBody {
       text-align: center;
       max-height: calc(80vh - 60px);
       overflow: auto;
       padding-right: 6px;
     }
 
-    #fakeModalBody hr {
+    #fakeModalBody hr,
+    #docsModalBody hr {
       border: none;
       border-top: 1px solid #e5e7eb;
       margin: 10px 0;
     }
 
-    .fake-invoice-block {
+    .fake-invoice-block,
+    .docs-block {
       text-align: center;
       padding: 8px 0;
     }
@@ -615,7 +625,13 @@
       font-weight: 800;
     }
 
-    /* ===== Fixed Media Queries ===== */
+    .docs-block strong {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
     @media (max-width: 900px) {
       body {
         padding: 16px 10px;
@@ -775,7 +791,6 @@
           <input id="searchInput" class="search-input" type="text" placeholder="Search in any column..." />
         </div>
 
-        <!-- Alarm icon -->
         <div id="alarmWrap" style="position:relative; display:inline-flex; align-items:center;">
           <button id="alarmBtn" type="button" class="alarm-btn" title="Alarms">
             <span class="alarm-bell">🔔</span>
@@ -840,7 +855,6 @@
     </div>
   </div>
 
-  <!-- Loading Overlay -->
   <div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
     <div class="loading-card">
       <div class="spinner"></div>
@@ -848,7 +862,6 @@
     </div>
   </div>
 
-  <!-- Fake invoices details modal -->
   <div id="fakeModal" class="loading-overlay" aria-hidden="true">
     <div class="loading-card">
       <div style="width:100%;">
@@ -861,6 +874,18 @@
     </div>
   </div>
 
+  <div id="docsModal" class="loading-overlay" aria-hidden="true">
+    <div class="loading-card">
+      <div style="width:100%;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <div id="docsModalTitle" style="font-weight:900;color:#0f172a;">تفصيل الوثائق</div>
+          <button id="docsCloseBtn" class="btn small secondary" type="button" style="padding:5px 10px;">Close</button>
+        </div>
+        <div id="docsModalBody" style="font-size:0.86rem;line-height:1.65;color:var(--text-main);"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ========= Config =========
     const API_URL = "https://lroggfzkgi.execute-api.us-east-1.amazonaws.com/prod/fetch-company";
@@ -869,6 +894,10 @@
     const TYPE_COL = "Type of accounting";
     const GATE_COL = "Gate type";
     const FAKE_COL = "فواتير وهميه";
+    const DOCS_COL = "وثايق منتهيه";
+
+    // لازم يطابق SEP اللي في Lambda
+    const DOCS_SEP = " ||| ";
 
     const INTEGRATION_PORTAL_BASE =
       "https://80260658-9969-4960-972a-30a2dce3136f-00-24ift3w1jdzt3.spock.replit.dev:8000/?userId=";
@@ -877,7 +906,7 @@
     const SALES_COL_PREFIX = "اجمالي مبيعات";
     const SALES_COL_CURRENT = `${SALES_COL_PREFIX} ${CURRENT_YEAR}`;
 
-    const ALARM_LIMIT = 20000000; // 20,000,000
+    const ALARM_LIMIT = 20000000;   // 20,000,000
     const ALARM_WARNING = 18000000; // 18,000,000
 
     const IDX_COL_NAME = "#";
@@ -888,6 +917,7 @@
       "Type of accounting",
       "Gate type",
       "فواتير وهميه",
+      "وثايق منتهيه",
       "اجمالي مبيعات 2025",
       "اجمالي ضريبة المبيعات 2025",
       "اجمالي مشتريات 2025",
@@ -915,7 +945,6 @@
     const tableBody = table.querySelector("tbody");
     const tableHeaderRow = document.getElementById("tableHeaderRow");
     const rowCountEl = document.getElementById("rowCount");
-
     const btnIntegrationPortal = document.getElementById("btnIntegrationPortal");
 
     // Loading overlay
@@ -926,6 +955,12 @@
     const fakeModal = document.getElementById("fakeModal");
     const fakeModalBody = document.getElementById("fakeModalBody");
     const fakeCloseBtn = document.getElementById("fakeCloseBtn");
+
+    // Docs modal
+    const docsModal = document.getElementById("docsModal");
+    const docsModalBody = document.getElementById("docsModalBody");
+    const docsCloseBtn = document.getElementById("docsCloseBtn");
+    const docsModalTitle = document.getElementById("docsModalTitle");
 
     function showOverlay(text = "Working...") {
       loadingTextEl.textContent = text;
@@ -949,9 +984,26 @@
       fakeModalBody.innerHTML = "";
     }
 
+    function openDocsModal() {
+      docsModal.classList.add("show");
+      docsModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeDocsModal() {
+      docsModal.classList.remove("show");
+      docsModal.setAttribute("aria-hidden", "true");
+      docsModalBody.innerHTML = "";
+    }
+
     fakeCloseBtn.addEventListener("click", closeFakeModal);
     fakeModal.addEventListener("click", (e) => { if (e.target === fakeModal) closeFakeModal(); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFakeModal(); });
+
+    docsCloseBtn.addEventListener("click", closeDocsModal);
+    docsModal.addEventListener("click", (e) => { if (e.target === docsModal) closeDocsModal(); });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { closeFakeModal(); closeDocsModal(); }
+    });
 
     // ========= state =========
     let currentColumns = [];
@@ -963,7 +1015,7 @@
 
     let alarms = [];
 
-    // ✅ يمنع إعادة رسم الجدول أثناء الكتابة (علشان مايفقدش الفوكس)
+    // typing guards
     let isTypingInCell = false;
     let _typingTimer = null;
     let _blurRenderTimer = null;
@@ -1001,24 +1053,13 @@
       console.log("Raw HTTP response:", raw);
 
       let data = {};
-      try {
-        data = JSON.parse(raw);
-      } catch (e) {
-        console.error("Failed to parse JSON:", e);
-        return {};
-      }
+      try { data = JSON.parse(raw); }
+      catch (e) { console.error("Failed to parse JSON:", e); return {}; }
 
       if (data && typeof data.body === "string") {
-        try {
-          const inner = JSON.parse(data.body);
-          console.log("Parsed inner body:", inner);
-          return inner;
-        } catch (e) {
-          console.warn("Failed to parse inner body JSON:", e);
-          return data;
-        }
+        try { return JSON.parse(data.body); }
+        catch (e) { console.warn("Failed to parse inner body JSON:", e); return data; }
       }
-
       return data;
     }
 
@@ -1094,17 +1135,25 @@
       return v !== "";
     }
 
-    function applyAlarmRanksToRows() {
-      for (const row of fullItems) {
-        if (hasFakeInvoices(row)) {
-          row._alarmLevel = "fake";
-          row._alarmRank = -1;
-          continue;
-        }
-        const level = getAlarmLevelForRow(row);
-        row._alarmLevel = level;
-        row._alarmRank = (level === "critical") ? 0 : (level === "warning") ? 1 : 2;
-      }
+    // ===== Docs parsing =====
+    function splitDocsMessages(raw) {
+      const s = (raw ?? "").toString().trim();
+      if (!s) return [];
+      if (s.includes(DOCS_SEP)) return s.split(DOCS_SEP).map(x => x.trim()).filter(Boolean);
+      return s.split(" : ").map(x => x.trim()).filter(Boolean);
+    }
+
+    function getDocsLevel(raw) {
+      const msgs = splitDocsMessages(raw);
+      if (!msgs.length) return "none";
+
+      const hasExpired = msgs.some(m => m.includes("انتهت منذ"));
+      if (hasExpired) return "expired";
+
+      const hasSoon = msgs.some(m => m.includes("ستنتهي خلال"));
+      if (hasSoon) return "soon";
+
+      return "soon";
     }
 
     function parseFakeParts(raw) {
@@ -1155,17 +1204,136 @@
       return out;
     }
 
+    // ✅✅✅ تعديل مهم: وثايق منتهيه تظهر دائمًا في alarmPanel (مش مرتبطة بحد المبيعات)
+    function buildDocsAlarmForRow(row) {
+      const raw = (row[DOCS_COL] ?? "").toString().trim();
+      if (!raw) return null;
+
+      const company = (row[COMPANY_COL] ?? "").toString().trim() || "(بدون اسم)";
+      const pk = (row[PK_NAME] ?? "").toString().trim();
+      const msgs = splitDocsMessages(raw);
+      if (!msgs.length) return null;
+
+      const docsLevel = row._docsLevel || getDocsLevel(raw);
+
+      if (docsLevel === "expired") {
+        return {
+          level: "critical",
+          pk,
+          company,
+          _docsGroup: true,
+          _docsLevel: "expired",
+          _docsCount: msgs.length,
+          message: `يوجد بشركة ${company} وثائق منتهيه يجب تجديدها`
+        };
+      }
+
+      // soon
+      return {
+        level: "warning",
+        pk,
+        company,
+        _docsGroup: true,
+        _docsLevel: "soon",
+        _docsCount: msgs.length,
+        message: `يوجد بشركة ${company} وثائق قربت تنتهي يرجي الانتباه`
+      };
+    }
+
+    // ✅✅✅ المطلوب: الشركة اللي عندها Alarms أكتر تبقى أولاً (في الجدول + خانة Alarms)
+    function applyAlarmRanksToRows() {
+      for (const row of fullItems) {
+        const rawDocs = (row[DOCS_COL] ?? "").toString().trim();
+        const docsMsgs = splitDocsMessages(rawDocs);
+        row._docsLevel = getDocsLevel(rawDocs);
+
+        // عداد alarms للشركة
+        // Fake: عدد المجموعات (حسب سنة)
+        const fakeCount = hasFakeInvoices(row) ? (buildFakeAlarmsForRow(row).length || 1) : 0;
+        // Docs: كل رسالة وثيقة Alarm (علشان لو عنده 5 وثايق يبقى أعلى)
+        const docsCount = docsMsgs.length;
+        // Sales: Alarm واحد لو متحقق
+        const salesLevel = getAlarmLevelForRow(row);
+        const salesCount = (salesLevel === "critical" || salesLevel === "warning") ? 1 : 0;
+
+        row._alarmCount = fakeCount + docsCount + salesCount;
+
+        // أعلى شدة على مستوى الصف
+        // 0 none, 1 warning, 2 critical
+        let maxSev = 0;
+        if (hasFakeInvoices(row)) maxSev = 2;
+
+        if (docsCount) {
+          if (row._docsLevel === "expired") maxSev = Math.max(maxSev, 2);
+          else if (row._docsLevel === "soon") maxSev = Math.max(maxSev, 1);
+        }
+
+        if (salesLevel === "critical") maxSev = Math.max(maxSev, 2);
+        else if (salesLevel === "warning") maxSev = Math.max(maxSev, 1);
+
+        row._maxSeverity = maxSev;
+
+        // تلوين الصف
+        if (hasFakeInvoices(row)) {
+          row._alarmLevel = "fake";
+          row._alarmRank = -1;
+        } else {
+          row._alarmLevel = (maxSev === 2) ? "critical" : (maxSev === 1) ? "warning" : "none";
+          row._alarmRank = (row._alarmLevel === "critical") ? 0 : (row._alarmLevel === "warning") ? 1 : 2;
+        }
+      }
+    }
+
+    function getRowByPk(pk) {
+      const needle = (pk ?? "").toString().trim();
+      return fullItems.find(r => ((r[PK_NAME] ?? "") + "").toString().trim() === needle);
+    }
+
+    function sortByCompletenessAndReindex() {
+      fullItems.sort((a, b) => {
+        // 1) الأكثر Alarms أولاً
+        const ca = Number(a._alarmCount || 0);
+        const cb = Number(b._alarmCount || 0);
+        if (cb !== ca) return cb - ca;
+
+        // 2) أعلى شدة
+        const sa = Number(a._maxSeverity || 0);
+        const sb = Number(b._maxSeverity || 0);
+        if (sb !== sa) return sb - sa;
+
+        // 3) ثم ترتيبك القديم
+        const ra = a._alarmRank ?? 2;
+        const rb = b._alarmRank ?? 2;
+        if (ra !== rb) return ra - rb;
+
+        const xa = completenessScore(a);
+        const xb = completenessScore(b);
+        if (xb !== xa) return xb - xa;
+
+        const oa = Number(a._origOrder) || 0;
+        const ob = Number(b._origOrder) || 0;
+        if (oa !== ob) return oa - ob;
+
+        const pka = (a[PK_NAME] ?? "").toString();
+        const pkb = (b[PK_NAME] ?? "").toString();
+        return pka.localeCompare(pkb);
+      });
+
+      fullItems.forEach((row, i) => row._idx = i + 1);
+    }
+
     function buildAlarms() {
       const salesCol = findSalesColumnName();
       alarms = [];
 
+      // 1) Fake invoices
       for (const row of fullItems) {
         if (hasFakeInvoices(row)) alarms.push(...buildFakeAlarmsForRow(row));
       }
 
+      // 2) Sales alarms (✅ حتى لو عنده فواتير وهمية)
       if (salesCol) {
         for (const row of fullItems) {
-          if (hasFakeInvoices(row)) continue;
           const level = getAlarmLevelForRow(row);
           if (level === "none") continue;
 
@@ -1179,17 +1347,35 @@
               ? `${baseMsg} وتخطت مبيعتها صافيه 20 مليون جنيه`
               : `${baseMsg} واقتربت من 20 مليون جنيه (قربت على الحد)`;
 
-          alarms.push({ level, pk, company, sales, salesCol, message: msg });
+          alarms.push({ level, pk, company, sales, salesCol, _salesGroup: true, message: msg });
         }
       }
 
-      const rank = { "critical": 0, "warning": 1, "none": 2 };
-      alarms.sort((a, b) => {
-        const aIsFake = !!a._fakeGroup;
-        const bIsFake = !!b._fakeGroup;
+      // 3) ✅ Docs alarms (وثايق منتهيه / قربت تنتهي) — تظهر دائمًا في alarmPanel
+      for (const row of fullItems) {
+        const a = buildDocsAlarmForRow(row);
+        if (a) alarms.push(a);
+      }
 
-        if (aIsFake !== bIsFake) return aIsFake ? -1 : 1;
-        if (rank[a.level] !== rank[b.level]) return rank[a.level] - rank[b.level];
+      // ✅ sort: الشركة اللي عليها alarms أكتر أولاً + الشدة
+      const rankLevel = { "critical": 0, "warning": 1, "none": 2 };
+
+      function companyAlarmCount(pk) {
+        const row = getRowByPk(pk);
+        return row ? Number(row._alarmCount || 0) : 0;
+      }
+
+      const groupRank = (x) => x._fakeGroup ? 0 : (x._salesGroup ? 1 : (x._docsGroup ? 2 : 3));
+
+      alarms.sort((a, b) => {
+        const ca = companyAlarmCount(a.pk);
+        const cb = companyAlarmCount(b.pk);
+        if (cb !== ca) return cb - ca;
+
+        if (rankLevel[a.level] !== rankLevel[b.level]) return rankLevel[a.level] - rankLevel[b.level];
+
+        const ga = groupRank(a), gb = groupRank(b);
+        if (ga !== gb) return ga - gb;
 
         const sa = Number.isFinite(a.sales) ? a.sales : 0;
         const sb = Number.isFinite(b.sales) ? b.sales : 0;
@@ -1207,6 +1393,25 @@
     const alarmClose = document.getElementById("alarmClose");
     const alarmTitle = document.getElementById("alarmTitle");
     const alarmSummary = document.getElementById("alarmSummary");
+
+    function openAlarmPanel() { alarmPanel.style.display = "block"; }
+    function closeAlarmPanel() { alarmPanel.style.display = "none"; }
+    function toggleAlarmPanel() {
+      alarmPanel.style.display = (alarmPanel.style.display === "block") ? "none" : "block";
+    }
+
+    function focusRowByPk(pk) {
+      if (!pk) return;
+      searchInput.value = "";
+      renderRows(fullItems);
+
+      const idx = fullItems.findIndex(r => (r[PK_NAME] ?? "").toString().trim() === pk);
+      if (idx < 0) return;
+
+      const rowId = fullItems[idx]._rowId;
+      const tr = tableBody.querySelector(`tr[data-row-id="${rowId}"]`);
+      if (tr) tr.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
 
     function updateAlarmUI() {
       const count = alarms.length;
@@ -1249,13 +1454,17 @@
         const sub = document.createElement("div");
         sub.className = "alarm-sub";
 
-        if (a._fakeGroup) {
-          sub.textContent = `(عدد الفواتير الوهمية: ${a._count})`;
-        } else if (a.salesCol) {
+        if (a._fakeGroup) sub.textContent = `(عدد الفواتير الوهمية: ${a._count})`;
+        else if (a._docsGroup) sub.textContent = `(عدد الوثائق: ${a._docsCount || 0})`;
+        else if (a.salesCol) {
           const salesText = Number.isFinite(a.sales) ? a.sales.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "";
           sub.textContent = `(${a.salesCol}: ${salesText})`;
-        } else {
-          sub.textContent = "";
+        } else sub.textContent = "";
+
+        // ✅ إضافة توضيح عدد تنبيهات الشركة نفسها
+        const row = getRowByPk(a.pk);
+        if (row && Number(row._alarmCount || 0) > 1) {
+          sub.textContent += (sub.textContent ? " • " : "") + `تنبيهات الشركة: ${row._alarmCount}`;
         }
 
         txtWrap.appendChild(t);
@@ -1267,6 +1476,23 @@
         item.style.cursor = "pointer";
         item.addEventListener("click", () => {
           closeAlarmPanel();
+
+          if (a._fakeGroup) {
+            const r = getRowByPk(a.pk);
+            if (r && (r[FAKE_COL] ?? "").toString().trim()) {
+              showFakeDetails(r[FAKE_COL]);
+              return;
+            }
+          }
+
+          if (a._docsGroup) {
+            const r = getRowByPk(a.pk);
+            if (r && (r[DOCS_COL] ?? "").toString().trim()) {
+              showDocsDetails(r[DOCS_COL]);
+              return;
+            }
+          }
+
           focusRowByPk(a.pk);
         });
 
@@ -1274,53 +1500,12 @@
       });
     }
 
-    function openAlarmPanel() { alarmPanel.style.display = "block"; }
-    function closeAlarmPanel() { alarmPanel.style.display = "none"; }
-    function toggleAlarmPanel() {
-      alarmPanel.style.display = (alarmPanel.style.display === "block") ? "none" : "block";
-    }
-
-    function focusRowByPk(pk) {
-      if (!pk) return;
-      searchInput.value = "";
-      renderRows(fullItems);
-
-      const idx = fullItems.findIndex(r => (r[PK_NAME] ?? "").toString().trim() === pk);
-      if (idx < 0) return;
-
-      const rowId = fullItems[idx]._rowId;
-      const tr = tableBody.querySelector(`tr[data-row-id="${rowId}"]`);
-      if (tr) tr.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-
-    function sortByCompletenessAndReindex() {
-      fullItems.sort((a, b) => {
-        const ra = a._alarmRank ?? 2;
-        const rb = b._alarmRank ?? 2;
-        if (ra !== rb) return ra - rb;
-
-        const sa = completenessScore(a);
-        const sb = completenessScore(b);
-        if (sb !== sa) return sb - sa;
-
-        const oa = Number(a._origOrder) || 0;
-        const ob = Number(b._origOrder) || 0;
-        if (oa !== ob) return oa - ob;
-
-        const pka = (a[PK_NAME] ?? "").toString();
-        const pkb = (b[PK_NAME] ?? "").toString();
-        return pka.localeCompare(pkb);
-      });
-
-      fullItems.forEach((row, i) => row._idx = i + 1);
-    }
-
     // ========= columns & table render =========
     function buildColumnsFromItems(items) {
       const colSet = new Set();
       (items || []).forEach(row => {
         Object.keys(row || {}).forEach(k => {
-          if (k === "_rowId" || k === "_idx" || k === "_origOrder" || k === "_alarmLevel" || k === "_alarmRank") return;
+          if (k === "_rowId" || k === "_idx" || k === "_origOrder" || k === "_alarmLevel" || k === "_alarmRank" || k === "_docsLevel" || k === "_alarmCount" || k === "_maxSeverity") return;
           colSet.add(k);
         });
       });
@@ -1392,6 +1577,38 @@
       openFakeModal();
     }
 
+    function showDocsDetails(raw) {
+      const msgs = splitDocsMessages(raw);
+      docsModalBody.innerHTML = "";
+
+      if (!msgs.length) {
+        docsModalTitle.textContent = "تفصيل الوثائق";
+        docsModalBody.textContent = "لا توجد تفاصيل.";
+        openDocsModal();
+        return;
+      }
+
+      const level = getDocsLevel(raw);
+      docsModalTitle.textContent = (level === "expired") ? "تفصيل الوثائق المنتهية" : "تفصيل الوثائق القريبة الانتهاء";
+
+      msgs.forEach((m, i) => {
+        const block = document.createElement("div");
+        block.className = "docs-block";
+        block.innerHTML = `
+          <strong>تنبيه</strong>
+          ${String(m).replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+        `;
+        docsModalBody.appendChild(block);
+
+        if (i < msgs.length - 1) {
+          const hr = document.createElement("hr");
+          docsModalBody.appendChild(hr);
+        }
+      });
+
+      openDocsModal();
+    }
+
     function makeSelectCell({ value, options, onChange }) {
       const sel = document.createElement("select");
       sel.className = "cell-select";
@@ -1424,7 +1641,6 @@
           const td = document.createElement("td");
           td.dataset.colName = col;
 
-          // ✅ Fake details button
           if (col === FAKE_COL && (row[col] ?? "").toString().trim()) {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -1436,7 +1652,20 @@
             });
             td.appendChild(btn);
           }
-          // ✅ Select for Type of accounting + Gate type (only in edit mode)
+          else if (col === DOCS_COL && (row[col] ?? "").toString().trim()) {
+            const raw = (row[col] ?? "").toString();
+            const dLevel = getDocsLevel(raw);
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn small " + (dLevel === "expired" ? "danger" : "warning");
+            btn.textContent = "عرض التفاصيل";
+            btn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              showDocsDetails(raw);
+            });
+            td.appendChild(btn);
+          }
           else if (editMode && (col === TYPE_COL || col === GATE_COL)) {
             td.classList.add("select-td");
 
@@ -1447,11 +1676,13 @@
               value: currentVal,
               options,
               onChange: (val) => {
-                row[col] = val; // plain text saved to row (backend-safe)
+                row[col] = val;
                 clearTimeout(_typingTimer);
                 _typingTimer = setTimeout(() => {
                   applyAlarmRanksToRows();
+                  sortByCompletenessAndReindex();
                   buildAlarms();
+                  applyFilter();
                 }, 50);
               }
             });
@@ -1459,7 +1690,6 @@
             td.appendChild(selectEl);
             td.contentEditable = "false";
           }
-          // ✅ Normal cell
           else {
             td.textContent = row[col] ?? "";
             td.contentEditable = editMode ? "true" : "false";
@@ -1536,19 +1766,13 @@
 
         currentColumns.forEach((col, colIndex) => {
           const cell = tds[colIndex];
-          if (!cell) {
-            obj[col] = "";
-            return;
-          }
+          if (!cell) { obj[col] = ""; return; }
 
-          // ✅ if cell contains select: take select.value (plain text)
           const sel = cell.querySelector("select");
-          if (sel) {
-            obj[col] = sel.value;
-            return;
-          }
+          if (sel) { obj[col] = sel.value; return; }
 
           if (col === FAKE_COL) obj[col] = (srcRow?.[FAKE_COL] ?? "");
+          else if (col === DOCS_COL) obj[col] = (srcRow?.[DOCS_COL] ?? "");
           else obj[col] = cell.textContent.trim();
         });
 
@@ -1803,7 +2027,6 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // ✅ ignore selects from "typing" logic
     tableBody.addEventListener("focusin", (e) => {
       if (!editMode) return;
       if (e.target && e.target.tagName === "SELECT") return;
@@ -1811,7 +2034,7 @@
       const td = e.target.closest("td");
       if (!td) return;
       const col = td.dataset.colName;
-      if (!col || col === FAKE_COL) return;
+      if (!col || col === FAKE_COL || col === DOCS_COL) return;
       isTypingInCell = true;
     });
 
@@ -1824,7 +2047,7 @@
       if (!td || !tr) return;
 
       const col = td.dataset.colName;
-      if (!col || col === FAKE_COL) return;
+      if (!col || col === FAKE_COL || col === DOCS_COL) return;
 
       const rowId = tr.dataset.rowId;
       const row = fullItems.find(r => r._rowId === rowId);
@@ -1836,7 +2059,9 @@
       clearTimeout(_typingTimer);
       _typingTimer = setTimeout(() => {
         applyAlarmRanksToRows();
+        sortByCompletenessAndReindex();
         buildAlarms();
+        applyFilter();
       }, 350);
     });
 
@@ -1847,7 +2072,7 @@
       const td = e.target.closest("td");
       if (!td) return;
       const col = td.dataset.colName;
-      if (!col || col === FAKE_COL) return;
+      if (!col || col === FAKE_COL || col === DOCS_COL) return;
 
       isTypingInCell = false;
 
@@ -1860,44 +2085,25 @@
       }, 0);
     }, true);
 
-    alarmBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleAlarmPanel();
-    });
-
-    alarmClose.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeAlarmPanel();
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!alarmPanel.contains(e.target) && !alarmBtn.contains(e.target)) closeAlarmPanel();
-    });
+    alarmBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleAlarmPanel(); });
+    alarmClose.addEventListener("click", (e) => { e.stopPropagation(); closeAlarmPanel(); });
+    document.addEventListener("click", (e) => { if (!alarmPanel.contains(e.target) && !alarmBtn.contains(e.target)) closeAlarmPanel(); });
 
     btnReload.addEventListener("click", loadFromServer);
     btnUpload.addEventListener("click", uploadGridToServer);
     btnAddRow.addEventListener("click", addRow);
     btnCancelEdit.addEventListener("click", cancelEdit);
 
-    searchInput.addEventListener("input", () => {
-      if (isTypingInCell) return;
-      applyFilter();
-    });
+    searchInput.addEventListener("input", () => { if (!isTypingInCell) applyFilter(); });
 
-    editToggleBtn.addEventListener("click", () => {
-      editMode = !editMode;
-      updateEditModeUI();
-    });
+    editToggleBtn.addEventListener("click", () => { editMode = !editMode; updateEditModeUI(); });
 
     function generateUserId() {
-      if (window.crypto && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID();
-      }
+      if (window.crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
       bytes[6] = (bytes[6] & 0x0f) | 0x40;
       bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
       const hex = [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
       return (
         hex.slice(0, 8) + "-" +
