@@ -777,7 +777,7 @@
             <div class="controls">
                 <button id="btnReload" class="btn">
                     <span class="btn-icon">⟳</span>
-                    <span>Load data from server</span>
+                    <span>Refresh Data</span>
                 </button>
 
                 <button id="btnIntegrationPortal" class="btn secondary" type="button"
@@ -1471,10 +1471,7 @@
                 } else sub.textContent = "";
 
                 // ✅ إضافة توضيح عدد تنبيهات الشركة نفسها
-                const row = getRowByPk(a.pk);
-                if (row && Number(row._alarmCount || 0) > 1) {
-                    sub.textContent += (sub.textContent ? " • " : "") + `تنبيهات الشركة: ${row._alarmCount}`;
-                }
+                
 
                 txtWrap.appendChild(t);
                 if (sub.textContent) txtWrap.appendChild(sub);
