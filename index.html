@@ -536,6 +536,16 @@
       border-left-color: #f59e0b !important;
     }
 
+    /* ===== ✅ Row highlight when clicking alarm ===== */
+    tr.row-focus-highlight td {
+      background: #dbeafe !important;
+      transition: background 0.2s ease;
+    }
+
+    tr.row-focus-highlight td:first-child {
+      border-left: 4px solid #2563eb !important;
+    }
+
     /* ===== Loading Overlay ===== */
     .loading-overlay {
       position: fixed;
@@ -1210,12 +1220,10 @@
       const raw = (row[SAP_COL] ?? "").toString().trim();
       if (!raw) return { level: "none" };
 
-      // لو نص صريح = يحتاج تجديد => Alarm أحمر
       if (raw.includes("يحتاج") && raw.includes("تجديد") && raw.includes("الاشتراك")) {
         return { level: "critical", mode: "renew", raw };
       }
 
-      // لو تاريخ
       const d = parseDateDMY(raw);
       if (!d) return { level: "none" };
 
@@ -1225,12 +1233,10 @@
 
       const leftDays = daysDiff(today, d);
 
-      // لو خلص بالفعل أو النهاردة => Alarm
       if (leftDays <= 0) {
         return { level: "critical", mode: "expiredDate", date: d, leftDays, raw };
       }
 
-      // أقل من شهر => تحذير
       if (leftDays <= 30) {
         return { level: "warning", mode: "soon", date: d, leftDays, raw };
       }
@@ -1250,7 +1256,7 @@
         const eom = endOfThisMonth();
         eom.setHours(0, 0, 0, 0);
 
-        const left = daysDiff(now, eom); // الأيام المتبقية لنهاية الشهر
+        const left = daysDiff(now, eom);
 
         if (left <= 10) return { level: "critical", leftDays: left, raw };
         return { level: "warning", leftDays: left, raw };
@@ -1307,7 +1313,6 @@
       return out;
     }
 
-    // وثايق منتهيه تظهر دائمًا في alarmPanel
     function buildDocsAlarmForRow(row) {
       const raw = (row[DOCS_COL] ?? "").toString().trim();
       if (!raw) return null;
@@ -1359,7 +1364,6 @@
         };
       }
 
-      // تاريخ
       const d = info.date;
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -1425,9 +1429,7 @@
       return fullItems.find(r => ((r[PK_NAME] ?? "") + "").toString().trim() === needle);
     }
 
-    // ======= ✅ ترتيب الجدول: كل Alarm فوق، وبعدهم التحذيرات، وبعدهم العادي =======
     function getRowSeverityRank(row) {
-      // 0 = Alarm (critical) | 1 = Warning | 2 = none
       if (hasFakeInvoices(row)) return 0;
 
       const rawDocs = (row[DOCS_COL] ?? "").toString().trim();
@@ -1445,7 +1447,6 @@
       const rInfo = getReturnsStatusInfo(row);
       if (rInfo.level === "critical") return 0;
 
-      // warnings
       if (salesLevel === "warning") return 1;
 
       if (rawDocs) {
@@ -1459,9 +1460,7 @@
       return 2;
     }
 
-    // داخل نفس الشدة: ترتيب النوع (Sales ثم SAP ثم Returns)
     function getRowTypePriority(row) {
-      // Critical group (بعد Fake و Docs)
       if (hasFakeInvoices(row)) return 0;
 
       const rawDocs = (row[DOCS_COL] ?? "").toString().trim();
@@ -1479,7 +1478,6 @@
       const rInfo = getReturnsStatusInfo(row);
       if (rInfo.level === "critical") return 4;
 
-      // Warning group
       if (salesLevel === "warning") return 0;
 
       if (rawDocs) {
@@ -1493,14 +1491,12 @@
       return 99;
     }
 
-    // الشركة اللي عندها Alarms أكتر تبقى أولاً (داخل نفس الشدة/النوع)
     function applyAlarmRanksToRows() {
       for (const row of fullItems) {
         const rawDocs = (row[DOCS_COL] ?? "").toString().trim();
         const docsMsgs = splitDocsMessages(rawDocs);
         row._docsLevel = getDocsLevel(rawDocs);
 
-        // counts
         const fakeCount = hasFakeInvoices(row) ? (buildFakeAlarmsForRow(row).length || 1) : 0;
         const docsCount = docsMsgs.length;
 
@@ -1515,7 +1511,6 @@
 
         row._alarmCount = fakeCount + docsCount + salesCount + sapCount + returnsCount;
 
-        // max severity: 0 none, 1 warning, 2 critical
         let maxSev = 0;
         if (hasFakeInvoices(row)) maxSev = 2;
 
@@ -1535,42 +1530,35 @@
 
         row._maxSeverity = maxSev;
 
-        // row coloring level
         if (hasFakeInvoices(row)) {
           row._alarmLevel = "fake";
         } else {
           row._alarmLevel = (maxSev === 2) ? "critical" : (maxSev === 1) ? "warning" : "none";
         }
 
-        // ✅ new ranks for sorting
-        row._sevRank = getRowSeverityRank(row);   // Alarm فوق، تحذير بعده
-        row._typeRank = getRowTypePriority(row);  // داخل نفس الشدة: Sales ثم SAP ثم Returns
+        row._sevRank = getRowSeverityRank(row);
+        row._typeRank = getRowTypePriority(row);
       }
     }
 
     function sortByCompletenessAndReindex() {
       fullItems.sort((a, b) => {
-        // 0) ✅ الأول: Alarm ثم Warning ثم None
         const sa = Number(a._sevRank ?? 2);
         const sb = Number(b._sevRank ?? 2);
         if (sa !== sb) return sa - sb;
 
-        // 1) ✅ داخل نفس الشدة: نوع الأولوية (Sales قبل SAP قبل Returns)
         const ta = Number(a._typeRank ?? 99);
         const tb = Number(b._typeRank ?? 99);
         if (ta !== tb) return ta - tb;
 
-        // 2) داخل نفس النوع: الأكثر Alarms أولاً
         const ca = Number(a._alarmCount || 0);
         const cb = Number(b._alarmCount || 0);
         if (cb !== ca) return cb - ca;
 
-        // 3) اكتمال البيانات
         const xa = completenessScore(a);
         const xb = completenessScore(b);
         if (xb !== xa) return xb - xa;
 
-        // 4) ترتيب قديم
         const oa = Number(a._origOrder) || 0;
         const ob = Number(b._origOrder) || 0;
         if (oa !== ob) return oa - ob;
@@ -1587,12 +1575,10 @@
       const salesCol = findSalesColumnName();
       alarms = [];
 
-      // 1) Fake invoices
       for (const row of fullItems) {
         if (hasFakeInvoices(row)) alarms.push(...buildFakeAlarmsForRow(row));
       }
 
-      // 2) Sales alarms
       if (salesCol) {
         for (const row of fullItems) {
           const level = getAlarmLevelForRow(row);
@@ -1612,25 +1598,21 @@
         }
       }
 
-      // 3) Docs alarms
       for (const row of fullItems) {
         const a = buildDocsAlarmForRow(row);
         if (a) alarms.push(a);
       }
 
-      // 4) ✅ SAP alarms (بعد الموجود + قبل الإقرار)
       for (const row of fullItems) {
         const a = buildSapAlarmForRow(row);
         if (a) alarms.push(a);
       }
 
-      // 5) ✅ Returns alarms
       for (const row of fullItems) {
         const a = buildReturnsAlarmForRow(row);
         if (a) alarms.push(a);
       }
 
-      // ✅ sort: Alarm فوق، تحذير تحت + داخلهم ترتيب المجموعات
       const rankLevel = { "critical": 0, "warning": 1, "none": 2 };
       const groupRank = (x) =>
         x._fakeGroup ? 0 :
@@ -1645,19 +1627,15 @@
       }
 
       alarms.sort((a, b) => {
-        // 0) Alarm قبل Warning
         if (rankLevel[a.level] !== rankLevel[b.level]) return rankLevel[a.level] - rankLevel[b.level];
 
-        // 1) داخل نفس الشدة: الشركات الأكثر alarms أولاً
         const ca = companyAlarmCount(a.pk);
         const cb = companyAlarmCount(b.pk);
         if (cb !== ca) return cb - ca;
 
-        // 2) ترتيب المجموعات (Sales قبل SAP قبل Returns)
         const ga = groupRank(a), gb = groupRank(b);
         if (ga !== gb) return ga - gb;
 
-        // 3) sales numeric (اختياري)
         const sa = Number.isFinite(a.sales) ? a.sales : 0;
         const sb = Number.isFinite(b.sales) ? b.sales : 0;
         return sb - sa;
@@ -1756,7 +1734,6 @@
             }
           }
 
-          // افتراض: نركز على الصف
           focusRowByPk(a.pk);
         });
 
@@ -1764,17 +1741,55 @@
       });
     }
 
+    // ===== ✅ highlight row after scrolling =====
+    let _rowHighlightTimer = null;
+
+    function clearRowHighlight() {
+      const prev = tableBody.querySelector("tr.row-focus-highlight");
+      if (prev) prev.classList.remove("row-focus-highlight");
+      if (_rowHighlightTimer) {
+        clearTimeout(_rowHighlightTimer);
+        _rowHighlightTimer = null;
+      }
+    }
+
+    function highlightRowTemporarily(tr, ms = 2500) {
+      if (!tr) return;
+      clearRowHighlight();
+      tr.classList.add("row-focus-highlight");
+      _rowHighlightTimer = setTimeout(() => {
+        tr.classList.remove("row-focus-highlight");
+        _rowHighlightTimer = null;
+      }, ms);
+    }
+
     function focusRowByPk(pk) {
       if (!pk) return;
-      searchInput.value = "";
-      renderRows(fullItems);
+
+      // امسح الفلتر لو موجود علشان الصف يبان في الـ DOM
+      if (searchInput.value.trim()) {
+        searchInput.value = "";
+        renderRows(fullItems);
+      } else {
+        renderRows(fullItems);
+      }
 
       const idx = fullItems.findIndex(r => (r[PK_NAME] ?? "").toString().trim() === pk);
       if (idx < 0) return;
 
       const rowId = fullItems[idx]._rowId;
-      const tr = tableBody.querySelector(`tr[data-row-id="${rowId}"]`);
-      if (tr) tr.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      requestAnimationFrame(() => {
+        const tr = tableBody.querySelector(`tr[data-row-id="${rowId}"]`);
+        if (!tr) return;
+
+        tr.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        setTimeout(() => {
+          const tr2 = tableBody.querySelector(`tr[data-row-id="${rowId}"]`);
+          highlightRowTemporarily(tr2, 2500);
+        }, 120);
+      });
     }
 
     // ========= columns & table render =========
