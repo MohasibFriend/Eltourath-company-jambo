@@ -507,6 +507,7 @@
       font-size: 0.85rem;
       color: var(--text-main);
       line-height: 1.35;
+      direction: rtl;
     }
 
     .alarm-sub {
@@ -797,8 +798,7 @@
         </button>
 
         <a href="https://f74f396b-8b77-4500-b7c8-82332b9deedc-00-ta0ekbizmfj2.picard.replit.dev/">
-          <button id="btnIntegrationSap" class="btn secondary" type="button"
-            title="Open Integration Sap with random userId">
+          <button id="btnIntegrationSap" class="btn secondary" type="button" title="Open Integration Sap">
             <span class="btn-icon">🔗</span>
             <span>Integration Sap</span>
           </button>
@@ -893,7 +893,8 @@
       <div style="width:100%;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
           <div style="font-weight:900;color:#991b1b;">تفصيل الفواتير الوهمية</div>
-          <button id="fakeCloseBtn" class="btn small secondary" type="button" style="padding:5px 10px;">Close</button>
+          <button id="fakeCloseBtn" class="btn small secondary" type="button"
+            style="padding:5px 10px;">Close</button>
         </div>
         <div id="fakeModalBody" style="font-size:0.86rem;line-height:1.65;color:var(--text-main);"></div>
       </div>
@@ -905,7 +906,8 @@
       <div style="width:100%;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
           <div id="docsModalTitle" style="font-weight:900;color:#0f172a;">تفصيل الوثائق</div>
-          <button id="docsCloseBtn" class="btn small secondary" type="button" style="padding:5px 10px;">Close</button>
+          <button id="docsCloseBtn" class="btn small secondary" type="button"
+            style="padding:5px 10px;">Close</button>
         </div>
         <div id="docsModalBody" style="font-size:0.86rem;line-height:1.65;color:var(--text-main);"></div>
       </div>
@@ -923,6 +925,9 @@
     const DOCS_COL = "وثايق منتهيه";
     const SAP_COL = "حالة اشتراك ال sap";
     const RETURNS_COL = "حالة الاقرار";
+
+    // ✅ MUST match Lambda REMOVE_MARKER
+    const REMOVE_MARKER = "__REMOVE__";
 
     // لازم يطابق SEP اللي في Lambda
     const DOCS_SEP = " ||| ";
@@ -1766,7 +1771,6 @@
     function focusRowByPk(pk) {
       if (!pk) return;
 
-      // امسح الفلتر لو موجود علشان الصف يبان في الـ DOM
       if (searchInput.value.trim()) {
         searchInput.value = "";
         renderRows(fullItems);
@@ -1797,7 +1801,7 @@
       const colSet = new Set();
       (items || []).forEach(row => {
         Object.keys(row || {}).forEach(k => {
-          if (k === "_rowId" || k === "_idx" || k === "_origOrder" || k === "_alarmLevel" || k === "_docsLevel" || k === "_alarmCount" || k === "_maxSeverity" || k === "_sevRank" || k === "_typeRank") return;
+          if (k === "_rowId" || k === "_idx" || k === "_origOrder" || k === "_alarmLevel" || k === "_docsLevel" || k === "_alarmCount" || k === "_maxSeverity" || k === "_sevRank" || k === "_typeRank" || k === "_dirty") return;
           colSet.add(k);
         });
       });
@@ -1901,7 +1905,13 @@
       openDocsModal();
     }
 
-    function makeSelectCell({ value, options, onChange }) {
+    function markDirty(row, col) {
+      if (!row) return;
+      row._dirty = row._dirty || {};
+      row._dirty[col] = true;
+    }
+
+    function makeSelectCell({ row, col, value, options, onChange }) {
       const sel = document.createElement("select");
       sel.className = "cell-select";
       options.forEach(opt => {
@@ -1911,7 +1921,10 @@
         sel.appendChild(o);
       });
       sel.value = options.includes(value) ? value : (value ? value : "");
-      sel.addEventListener("change", () => onChange(sel.value));
+      sel.addEventListener("change", () => {
+        markDirty(row, col); // ✅ مهم
+        onChange(sel.value);
+      });
       return sel;
     }
 
@@ -1965,6 +1978,8 @@
             const options = (col === TYPE_COL) ? TYPE_OPTIONS : GATE_OPTIONS;
 
             const selectEl = makeSelectCell({
+              row,
+              col,
               value: currentVal,
               options,
               onChange: (val) => {
@@ -2016,6 +2031,7 @@
         const copy = { ...row };
         copy._rowId = generateRowId();
         copy._origOrder = i + 1;
+        copy._dirty = {}; // ✅ track changed fields
         return copy;
       });
 
@@ -2045,31 +2061,40 @@
       setStatus(`Showing ${filtered.length} of ${fullItems.length} rows (filtered).`, "");
     }
 
+    // ✅ NEW: send only dirty fields (and allow real clearing via REMOVE_MARKER)
     function collectTableDataFromDom() {
       const rows = [];
-      const trs = tableBody.querySelectorAll("tr");
 
-      trs.forEach(tr => {
-        const rowId = tr.dataset.rowId;
-        const srcRow = fullItems.find(r => r._rowId === rowId);
+      for (const row of fullItems) {
+        const pk = (row[PK_NAME] ?? "").toString().trim();
+        if (!pk) continue;
 
-        const tds = Array.from(tr.querySelectorAll("td")).slice(1);
-        const obj = {};
+        const dirty = row._dirty || {};
+        const dirtyCols = Object.keys(dirty).filter(c => dirty[c]);
 
-        currentColumns.forEach((col, colIndex) => {
-          const cell = tds[colIndex];
-          if (!cell) { obj[col] = ""; return; }
+        if (!dirtyCols.length) continue;
 
-          const sel = cell.querySelector("select");
-          if (sel) { obj[col] = sel.value; return; }
+        const obj = { [PK_NAME]: pk };
 
-          if (col === FAKE_COL) obj[col] = (srcRow?.[FAKE_COL] ?? "");
-          else if (col === DOCS_COL) obj[col] = (srcRow?.[DOCS_COL] ?? "");
-          else obj[col] = cell.textContent.trim();
-        });
+        for (const col of dirtyCols) {
+          if (!col || col.startsWith("_")) continue;
 
-        if (obj[PK_NAME]) rows.push(obj);
-      });
+          let v = (row[col] ?? "");
+          const s = (v ?? "").toString().trim();
+
+          // لو dropdown واتختار "—" => تفريغ فعلي
+          if (col === TYPE_COL || col === GATE_COL) {
+            obj[col] = (s === "") ? REMOVE_MARKER : s;
+            continue;
+          }
+
+          // باقي الأعمدة: لو اتلمست واتمسحت => REMOVE
+          obj[col] = (s === "") ? REMOVE_MARKER : s;
+        }
+
+        // لو مفيش غير pk
+        if (Object.keys(obj).length > 1) rows.push(obj);
+      }
 
       return rows;
     }
@@ -2095,6 +2120,7 @@
       currentColumns.forEach(col => newRow[col] = "");
       newRow._rowId = generateRowId();
       newRow._origOrder = fullItems.length + 1;
+      newRow._dirty = {};
 
       fullItems.push(newRow);
 
@@ -2147,7 +2173,7 @@
       const row = fullItems.find(r => r._rowId === rowId);
       if (!row) return;
 
-      const pk = row[PK_NAME];
+      const pk = (row[PK_NAME] ?? "").toString().trim();
       if (!pk) {
         alert("This row has no Registration Number, cannot delete on server.");
         return;
@@ -2230,12 +2256,12 @@
     async function uploadGridToServer() {
       const rows = collectTableDataFromDom();
       if (!rows.length) {
-        setStatus("There is no data to upload. Make sure there is at least one row with Registration Number.", "error");
+        setStatus("No changes to save (no dirty fields).", "error");
         return;
       }
 
       try {
-        setLoading(true, "Saving table (merge, no overwrite) ...");
+        setLoading(true, "Saving changes (merge + remove) ...");
 
         const resp = await fetch(API_URL, {
           method: "POST",
@@ -2248,10 +2274,11 @@
         const data = await parseApiJson(resp);
         const merged = data.merged ?? 0;
         const created = data.created ?? 0;
+        const skipped = data.skipped ?? 0;
         const errors = data.errors ?? 0;
 
-        if (errors > 0) setStatus(`Saved with warnings: merged ${merged}, created ${created}, errors ${errors}.`, "error");
-        else setStatus(`Saved successfully: merged ${merged}, created ${created}.`, "success");
+        if (errors > 0) setStatus(`Saved with warnings: merged ${merged}, created ${created}, skipped ${skipped}, errors ${errors}.`, "error");
+        else setStatus(`Saved successfully: merged ${merged}, created ${created}, skipped ${skipped}.`, "success");
 
         await loadFromServer();
       } catch (err) {
@@ -2283,15 +2310,28 @@
         if (existing) {
           for (const [k, v] of Object.entries(xr)) {
             if (k === pkKey) continue;
+
             const s = (v ?? "").toString().trim();
+            // Excel merge: هنا بنعمل نفس سلوكك القديم: ندمج غير الفاضي فقط
             if (!s) continue;
+
             existing[k] = v;
+            markDirty(existing, k); // ✅ لو اتغير من Excel اعتبره Dirty
           }
           updated += 1;
         } else {
           const copy = { ...xr };
           copy._rowId = generateRowId();
           copy._origOrder = fullItems.length + 1;
+          copy._dirty = {};
+
+          // اعتبر كل اللي جاي من Excel تغييرات
+          Object.keys(xr || {}).forEach(k => {
+            if (k === pkKey) return;
+            const s = (xr[k] ?? "").toString().trim();
+            if (s) copy._dirty[k] = true;
+          });
+
           fullItems.push(copy);
           map.set(pk, copy);
           added += 1;
@@ -2341,6 +2381,7 @@
             setStatus(`Excel merged: updated ${r.updated}, added ${r.added}. Now you can save to server.`, "success");
           } else {
             setData(validRows);
+            // اعتبر البيانات الجديدة ليست dirty تلقائياً (لو تحبها dirty قولّي)
             setStatus(`File loaded. ${validRows.length} rows are ready in the grid (you can edit them).`, "success");
           }
         } catch (err) {
@@ -2381,6 +2422,7 @@
       if (!row) return;
 
       row[col] = td.textContent.trim();
+      markDirty(row, col); // ✅ مهم
 
       isTypingInCell = true;
       clearTimeout(_typingTimer);
